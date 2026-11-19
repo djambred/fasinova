@@ -114,6 +114,34 @@ class PolicyTest extends TestCase
         $this->assertSame([], $D::declaredTargets($compose, 'tidak-ada'));
     }
 
+    public function test_env_is_passed_as_container_environment_and_beats_repo_values(): void
+    {
+        $c = ['services' => ['php' => ['image' => 'x', 'environment' => ['PROJECT_NAME' => 'dagopark', 'APP_URL' => 'https://dagopark.test']],
+            'nginx' => ['image' => 'y']]];
+        $h = ComposePolicy::harden($c, 's', 'nginx', 80, 20001, 0.5, 512, [], false, ['APP_URL' => 'https://s.fasinova.my.id', 'APP_KEY' => 'base64:ab$cd']);
+        $this->assertSame('https://s.fasinova.my.id', $h['services']['php']['environment']['APP_URL']);   // nilai FASINOVA menang
+        $this->assertSame('dagopark', $h['services']['php']['environment']['PROJECT_NAME']);             // milik repo yang lain tetap
+        $this->assertSame('base64:ab$$cd', $h['services']['php']['environment']['APP_KEY']);            // $ dilipat agar tak diinterpolasi ulang
+        $this->assertSame('https://s.fasinova.my.id', $h['services']['nginx']['environment']['APP_URL']); // service tanpa environment juga dapat
+        $plain = ComposePolicy::harden($c, 's', 'nginx', 80, 20001, 0.5, 512);                          // tanpa env: perilaku lama
+        $this->assertArrayNotHasKey('APP_KEY', $plain['services']['php']['environment']);
+        $this->assertArrayNotHasKey('environment', $plain['services']['nginx']);
+    }
+
+    public function test_env_map_defaults_public_url_and_db_overrides_student_values(): void
+    {
+        $v = fn (string $k, string $val) => (object) ['key' => $k, 'value' => $val];
+        $D = \App\Services\Deployer::class;
+        $map = $D::envMap(collect([$v('APP_NAME', 'X'), $v('DB_HOST', 'milik-mahasiswa'), $v('ASSET_URL', '')]), ['DB_HOST' => 'karya-mariadb', 'DB_PORT' => '3306'], 'https://s.fasinova.my.id');
+        $this->assertSame('https://s.fasinova.my.id', $map['APP_URL']);          // tidak diisi mahasiswa -> alamat publik
+        $this->assertSame('https://s.fasinova.my.id', $map['ASSET_URL']);        // kosong dianggap tidak diisi
+        $this->assertSame('karya-mariadb', $map['DB_HOST']);                      // DB dari FASINOVA menang
+        $this->assertSame('X', $map['APP_NAME']);
+        $own = $D::envMap(collect([$v('APP_URL', 'https://domain-sendiri.example')]), [], 'https://s.fasinova.my.id');
+        $this->assertSame('https://domain-sendiri.example', $own['APP_URL']);    // pilihan eksplisit mahasiswa dihormati
+        $this->assertSame("A=\"1\\\"2\\\$3\"\nB=\"x\"\n", $D::envText(['A' => '1"2$3', 'B' => 'x']));   // kutip dan $ di-escape
+    }
+
     public function test_claims(): void
     {
         $w = ClaimChecker::warnings(['a' => 'Sistem ini 100% aman dan pasti benar', 'b' => 'hasil 95%'], 'cs');

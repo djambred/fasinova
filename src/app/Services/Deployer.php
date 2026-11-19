@@ -65,7 +65,9 @@ class Deployer
                 $dbEnv = (new DbProvisioner)->provision($this->d);
                 $this->secrets[] = $dbEnv['DB_PASSWORD'];
             }
-            $envText = $this->envFile($i->envVariables, $dbEnv);
+            $publicUrl = 'https://'.$this->d->subdomain.'.'.config('fasinova.domain');
+            $envMap = self::envMap($i->envVariables, $dbEnv, $publicUrl);
+            $envText = self::envText($envMap);
             self::writeFile("$dir/.env", $envText, 0600);
             $json = $this->run(['docker', 'compose', '-p', $this->d->project(), '--project-directory', $dir, 'config', '--format', 'json'], $dir, 'scanning');
             $compose = self::decodeCompose($json) ?: throw new \RuntimeException('docker compose config tidak menghasilkan JSON.');
@@ -83,8 +85,8 @@ class Deployer
             $this->log('scanning', 'out', "service publik: $public (port $internal)");
             $this->d->update(['public_service' => $public, 'internal_port' => $internal]); // dipakai health check
             $final = ComposePolicy::harden($compose, $i->slug, $public, $internal, $port,
-                (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine);
-            File::put("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES));
+                (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine, $envMap);
+            self::writeFile("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES), 0600);   // berisi nilai env
 
             $this->step('building');
             $upStarted = true;
@@ -100,8 +102,8 @@ class Deployer
                 $this->log('health_check', 'out', "port $internal hanya mengalihkan ke https ($redirect); beralih ke port 443 dengan TLS");
                 $this->d->update(['upstream_tls' => true, 'internal_port' => 443]);
                 $final = ComposePolicy::harden($compose, $i->slug, $public, 443, $port,
-                    (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine);
-                File::put("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES));
+                    (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine, $envMap);
+                self::writeFile("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES), 0600);
                 $this->run($this->compose('up', '-d'), $dir, 'starting', 300);   // hanya memetakan ulang port; image sudah ada
                 if (! $this->waitHealthy()) throw new \RuntimeException('Health check gagal setelah beralih ke port 443 (TLS).');
             }
@@ -380,13 +382,24 @@ class Deployer
         return ['docker', 'compose', '-p', $this->d->project(), '-f', $this->d->dir().'/fasinova.compose.json', '--project-directory', $this->d->dir(), ...$args];
     }
 
-    /** Variabel DB dari FASINOVA menimpa DB_* buatan mahasiswa. */
-    private function envFile($vars, array $extra = []): string
+    /**
+     * Peta env akhir: env mahasiswa; APP_URL dan ASSET_URL diisi alamat publik karya bila mahasiswa tidak mengisinya
+     * (aplikasi sering menanam domain dev, mis. https://nama.test, sehingga aset gagal dimuat); lalu DB_* dari FASINOVA
+     * menimpa DB_* buatan mahasiswa.
+     * @return array<string,string>
+     */
+    public static function envMap($vars, array $dbEnv, string $publicUrl): array
+    {
+        $map = [];
+        foreach ($vars as $v) $map[$v->key] = (string) $v->value;
+        foreach (['APP_URL', 'ASSET_URL'] as $k) if (! isset($map[$k]) || $map[$k] === '') $map[$k] = $publicUrl;
+        return $dbEnv + $map;
+    }
+
+    public static function envText(array $map): string
     {
         $q = fn ($k, $v) => $k.'="'.addcslashes((string) $v, "\"\\\n$").'"';
-        $lines = $vars->reject(fn ($v) => array_key_exists($v->key, $extra))->map(fn ($v) => $q($v->key, $v->value))->all();
-        foreach ($extra as $k => $v) $lines[] = $q($k, $v);
-        return implode("\n", $lines)."\n";
+        return implode("\n", array_map($q, array_keys($map), $map))."\n";
     }
 
     private function step(string $s): void

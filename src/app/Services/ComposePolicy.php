@@ -59,11 +59,16 @@ class ComposePolicy
      * Ambil compose hasil `docker compose config`, buang ports/container_name buatan mahasiswa,
      * lalu tambahkan override PRD 6.3. Hasil ditulis sebagai JSON (YAML subset) dan dipakai `up -f`.
      */
-    public static function harden(array $compose, string $slug, string $publicService, int $internalPort, int $hostPort, float $cpu, int $memMb, array $caps = [], bool $joinDbNetwork = false): array
+    public static function harden(array $compose, string $slug, string $publicService, int $internalPort, int $hostPort, float $cpu, int $memMb, array $caps = [], bool $joinDbNetwork = false, array $env = []): array
     {
         unset($compose['name']);
+        // `$` dilipat jadi `$$` agar tidak diinterpolasi ulang saat compose membaca berkas ini
+        $env = array_map(fn ($v) => str_replace('$', '$$', (string) $v), $env);
         foreach ($compose['services'] as $name => &$s) {
             unset($s['ports'], $s['container_name']);
+            // Env FASINOVA diteruskan sebagai environment container asli. Beberapa aplikasi menulis ulang .env sendiri saat start
+            // (nilai dev tertanam); variabel environment yang sudah ada tidak ditimpa oleh .env (Laravel/Dotenv), jadi nilai FASINOVA menang.
+            if ($env) $s['environment'] = array_merge((array) ($s['environment'] ?? []), $env);
             $s['restart'] = 'unless-stopped';
             $s['security_opt'] = ['no-new-privileges:true'];
             $s['cap_drop'] = ['ALL'];
