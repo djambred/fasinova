@@ -36,7 +36,10 @@ class CaddyClient
     /** Aplikasi yang melayani TLS sendiri: sambungkan lewat TLS tanpa verifikasi (sertifikat publik tetap dari Caddy, bukan dari aplikasi). */
     private static function proxyHandler(Deployment $d): array
     {
-        $h = ['handler' => 'reverse_proxy', 'upstreams' => [['dial' => '127.0.0.1:'.$d->host_port]]];
+        $h = ['handler' => 'reverse_proxy', 'upstreams' => [['dial' => '127.0.0.1:'.$d->host_port]],
+            // Host asli pengunjung harus sampai ke aplikasi: bila tidak, Caddy memakai alamat upstream (127.0.0.1:<port>) saat upstream TLS
+            // dan aplikasi membangun semua tautan absolut (Login, redirect, aset) dengan alamat internal itu.
+            'headers' => ['request' => ['set' => ['Host' => ['{http.request.host}']]]]];
         if ($d->upstream_tls) $h['transport'] = ['protocol' => 'http', 'tls' => ['insecure_skip_verify' => true]];
         return $h;
     }
@@ -77,7 +80,8 @@ class CaddyClient
         $cur = $this->http()->get('/id/'.self::routeId($d));
         if ($cur->successful() && ($cur->json('handle.0.upstreams.0.dial') === '127.0.0.1:'.$d->host_port)
             && ($cur->json('match.0.host.0') === $d->subdomain.'.'.config('fasinova.domain'))
-            && ((bool) $cur->json('handle.0.transport.tls.insecure_skip_verify') === (bool) $d->upstream_tls)) {
+            && ((bool) $cur->json('handle.0.transport.tls.insecure_skip_verify') === (bool) $d->upstream_tls)
+            && $cur->json('handle.0.headers.request.set.Host.0') === '{http.request.host}') {
             return false;
         }
         $this->upsert($d);

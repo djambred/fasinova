@@ -35,6 +35,24 @@ class CaddyClientTest extends TestCase
         $this->assertSame('127.0.0.1:20007', $r['handle'][0]['upstreams'][0]['dial']);
     }
 
+    public function test_original_host_header_is_always_forwarded_to_the_app(): void
+    {
+        $d = $this->deployment();
+        foreach ([false, true] as $tls) {                       // upstream biasa maupun TLS
+            $d->update(['upstream_tls' => $tls]);
+            $this->assertSame(['{http.request.host}'], CaddyClient::route($d->fresh())['handle'][0]['headers']['request']['set']['Host']);
+        }
+    }
+
+    public function test_ensure_reinstalls_routes_created_before_the_host_header_fix(): void
+    {
+        $d = $this->deployment();
+        $old = CaddyClient::route($d);
+        unset($old['handle'][0]['headers']);                    // rute lama (tanpa Host) masih terpasang di Caddy
+        Http::fake(['*/id/fz-*' => Http::sequence()->push($old, 200)->push('', 404)->push('', 200), '*/id/fz-server/routes/0' => Http::response('', 200)]);
+        $this->assertTrue((new CaddyClient)->ensure($d->fresh()));
+    }
+
     public function test_upsert_deletes_then_inserts_in_front_of_catch_all(): void
     {
         $d = $this->deployment();
