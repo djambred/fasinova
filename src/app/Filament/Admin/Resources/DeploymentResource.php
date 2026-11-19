@@ -49,7 +49,7 @@ class DeploymentResource extends Resource
                 TextColumn::make('innovation.title')->label('Karya')->limit(40),
                 TextColumn::make('status')->badge()->color(fn ($state) => match ($state) {
                     'live' => 'success', 'failed' => 'danger', 'stopped' => 'gray', default => 'warning',
-                })->description(fn (Deployment $d) => $d->needs_redeploy ? 'perlu redeploy' : null),
+                })->description(fn (Deployment $record) => $record->needs_redeploy ? 'perlu redeploy' : null),
                 TextColumn::make('commit_sha')->label('Commit')->formatStateUsing(fn ($state) => substr((string) $state, 0, 7)),
                 TextColumn::make('host_port')->label('Port'),
                 TextColumn::make('db_engine')->label('DB')->badge()->formatStateUsing(fn ($state) => \App\Services\DbProvisioner::ENGINES[$state] ?? '—'),
@@ -75,11 +75,11 @@ class DeploymentResource extends Resource
     {
         return Action::make($name)->authorize('update')->label($label)->icon($icon)->color($danger ? 'danger' : 'gray')->requiresConfirmation()
             // Deploy hanya untuk karya yang sudah disetujui PIC (SHA terkunci); sebelum itu aksi ini tidak ada artinya dan hanya membuat status "gagal".
-            ->visible(fn (Deployment $d) => $action === 'remove' || filled($d->innovation?->repository?->locked_commit_sha))
-            ->action(function (Deployment $d) use ($action, $name) {
-                if ($action === 'deploy') $d->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
-                RunnerJob::dispatch($d->id, $action);
-                AuditLog::record("deploy.$name", $d->innovation_id, ['subdomain' => $d->subdomain]);
+            ->visible(fn (?Deployment $record) => $action === 'remove' || filled($record?->innovation?->repository?->locked_commit_sha))
+            ->action(function (Deployment $record) use ($action, $name) {
+                if ($action === 'deploy') $record->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
+                RunnerJob::dispatch($record->id, $action);
+                AuditLog::record("deploy.$name", $record->innovation_id, ['subdomain' => $record->subdomain]);
                 Notification::make()->title("$name dijadwalkan")->success()->send();
             });
     }
@@ -87,20 +87,20 @@ class DeploymentResource extends Resource
     private static function logsAction(): Action
     {
         return Action::make('logs')->authorize('view')->label('Log')->icon('heroicon-o-document-text')->modalSubmitAction(false)->modalWidth('5xl')
-            ->modalContent(fn (Deployment $d): View => view('filament.deployment-logs', ['logs' => $d->logs()->latest('id')->limit(500)->get()->reverse()]));
+            ->modalContent(fn (Deployment $record): View => view('filament.deployment-logs', ['logs' => $record->logs()->latest('id')->limit(500)->get()->reverse()]));
     }
 
     private static function quotaAction(): Action
     {
         return Action::make('quota')->authorize('update')->label('Kuota')->icon('heroicon-o-adjustments-horizontal')
-            ->fillForm(fn (Deployment $d) => $d->only('cpu_limit', 'mem_limit_mb', 'allowed_caps'))
+            ->fillForm(fn (Deployment $record) => $record->only('cpu_limit', 'mem_limit_mb', 'allowed_caps'))
             ->schema([
                 TextInput::make('cpu_limit')->numeric()->minValue(0.1)->maxValue(4)->required(),
                 TextInput::make('mem_limit_mb')->numeric()->minValue(128)->maxValue(4096)->required(),
                 CheckboxList::make('allowed_caps')->label('Kapabilitas tambahan (dasar selalu aktif)')->options(array_combine($extra = array_values(array_diff(config('fasinova.allowed_caps'), config('fasinova.base_caps'))), $extra)),
-            ])->action(function (Deployment $d, array $data) {
-                $d->update($data + ['needs_redeploy' => true]);
-                AuditLog::record('deploy.quota', $d->innovation_id, $data);
+            ])->action(function (Deployment $record, array $data) {
+                $record->update($data + ['needs_redeploy' => true]);
+                AuditLog::record('deploy.quota', $record->innovation_id, $data);
             });
     }
 

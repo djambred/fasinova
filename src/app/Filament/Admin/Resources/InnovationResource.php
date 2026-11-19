@@ -75,7 +75,7 @@ class InnovationResource extends Resource
             ->modalWidth('4xl')
             ->schema(function (Innovation $record) {
                 $report = $record->repository?->validation_report;
-                $items = collect($report['items'] ?? [])->map(fn ($i) => Text::make((($i['warn'] ?? false) ? '⚠️ ' : ($i['ok'] ? '✅ ' : '❌ ')).$i['label'].($i['detail'] && (! $i['ok'] || ($i['warn'] ?? false)) ? " — {$i['detail']}" : '')));
+                $items = collect($report['items'] ?? [])->map(fn ($i) => Text::make((($i['warn'] ?? false) ? '⚠️ ' : ($i['ok'] ? '✅ ' : '❌ ')).$i['label'].(($i['detail'] ?? '') && (! $i['ok'] || ($i['warn'] ?? false)) ? " — ".($i['detail'] ?? '')."" : '')));
                 $warn = collect($record->resultCard?->claim_warnings ?? [])->map(fn ($w) => Text::make("⚠️ $w"));
                 $fields = [Section::make('Hasil validasi otomatis')->schema($items->all() ?: [Text::make('Belum divalidasi.')])->collapsible()];
                 if ($warn->isNotEmpty()) $fields[] = Section::make('Peringatan klaim')->schema($warn->all());
