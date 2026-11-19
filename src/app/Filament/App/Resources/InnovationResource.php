@@ -110,8 +110,8 @@ class InnovationResource extends Resource
                                 ->dehydrated(fn ($state) => filled($state)),
                             Toggle::make('is_secret')->label('Rahasia')->default(true)->live(),
                         ])->columns(3)->addActionLabel('Tambah variabel')->columnSpanFull()
-                          ->mutateRelationshipDataBeforeSaveUsing(fn (array $d) => $d + ['updated_by' => auth()->id()])
-                          ->mutateRelationshipDataBeforeCreateUsing(fn (array $d) => $d + ['updated_by' => auth()->id()]),
+                          ->mutateRelationshipDataBeforeSaveUsing(fn (array $data) => $data + ['updated_by' => auth()->id()])
+                          ->mutateRelationshipDataBeforeCreateUsing(fn (array $data) => $data + ['updated_by' => auth()->id()]),
                     ]),
 
                 Step::make('Subdomain')->visible($deployable)->schema([

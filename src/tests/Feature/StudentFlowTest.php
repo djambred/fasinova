@@ -164,4 +164,12 @@ class StudentFlowTest extends TestCase
         $this->assertEqualsCanonicalizing(['APP_KEY', 'DB_HOST'], $i->envVariables()->pluck('key')->all());
         $t->assertFormSet(['repository.url' => 'https://github.com/org/fs-demo', 'repository.tag' => 'main']);
     }
+
+    public function test_submit_action_runs_without_server_error(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $i = $this->completeDraft($mhs, $sup, $prodi);
+        Livewire::test(EditInnovation::class, ['record' => $i->id])->callAction('submit')->assertOk();   // dulu 500: closure Repeater memakai $d
+        $this->assertSame('submitted', $i->fresh()->status);
+    }
 }

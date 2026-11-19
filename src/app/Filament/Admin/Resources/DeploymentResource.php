@@ -47,12 +47,12 @@ class DeploymentResource extends Resource
             ->columns([
                 TextColumn::make('subdomain')->searchable(),
                 TextColumn::make('innovation.title')->label('Karya')->limit(40),
-                TextColumn::make('status')->badge()->color(fn ($s) => match ($s) {
+                TextColumn::make('status')->badge()->color(fn ($state) => match ($state) {
                     'live' => 'success', 'failed' => 'danger', 'stopped' => 'gray', default => 'warning',
                 })->description(fn (Deployment $d) => $d->needs_redeploy ? 'perlu redeploy' : null),
-                TextColumn::make('commit_sha')->label('Commit')->formatStateUsing(fn ($s) => substr((string) $s, 0, 7)),
+                TextColumn::make('commit_sha')->label('Commit')->formatStateUsing(fn ($state) => substr((string) $state, 0, 7)),
                 TextColumn::make('host_port')->label('Port'),
-                TextColumn::make('db_engine')->label('DB')->badge()->formatStateUsing(fn ($s) => \App\Services\DbProvisioner::ENGINES[$s] ?? '—'),
+                TextColumn::make('db_engine')->label('DB')->badge()->formatStateUsing(fn ($state) => \App\Services\DbProvisioner::ENGINES[$state] ?? '—'),
                 TextColumn::make('last_health_at')->label('Health')->since(),
                 TextColumn::make('finished_at')->label('Deploy terakhir')->since(),
             ])->filters([
