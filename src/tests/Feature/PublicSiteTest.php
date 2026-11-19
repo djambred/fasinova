@@ -179,4 +179,12 @@ class PublicSiteTest extends TestCase
         $i->update(['form_type' => 'web']);
         $this->assertTrue($i->isDeployable());   // track AI boleh deploy
     }
+
+    public function test_behind_https_proxy_urls_are_https(): void
+    {
+        $this->make('published');
+        $html = $this->withHeaders(['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'fasinova.test'])->get('/masuk')->assertOk()->getContent();
+        $this->assertStringNotContainsString('http://localhost', $html);
+        $this->assertSame('https', app('request')->getScheme());
+    }
 }

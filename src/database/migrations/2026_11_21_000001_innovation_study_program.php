@@ -11,7 +11,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('innovations', fn (Blueprint $t) => $t->foreignId('study_program_id')->nullable()->constrained('study_programs')->nullOnDelete());
-        DB::statement('UPDATE innovations i SET study_program_id = u.study_program_id FROM users u WHERE u.id = i.owner_id');
+        // subquery (bukan UPDATE ... FROM) agar jalan di Postgres dan SQLite
+        DB::statement('UPDATE innovations SET study_program_id = (SELECT users.study_program_id FROM users WHERE users.id = innovations.owner_id)');
     }
 
     public function down(): void

@@ -58,14 +58,16 @@ class Deployer
             File::put("$dir/.env", $this->envFile($i->envVariables, $dbEnv));
             chmod("$dir/.env", 0600);
             $json = $this->run(['docker', 'compose', '-p', $this->d->project(), '--project-directory', $dir, 'config', '--format', 'json'], $dir, 'scanning');
-            $compose = json_decode($json, true) ?: throw new \RuntimeException('docker compose config tidak menghasilkan JSON.');
+            $compose = self::decodeCompose($json) ?: throw new \RuntimeException('docker compose config tidak menghasilkan JSON.');
             $viol = ComposePolicy::check($compose, $i->track->forbidden_images ?? [], $dir);
             if ($viol) throw new \RuntimeException("Kebijakan compose dilanggar:\n- ".implode("\n- ", $viol));
             if ($i->track->code === 'cs' && ! $i->safe_service_ok) throw new \RuntimeException('Cyber Security: PIC belum menandai service aman.');
 
             $port = $this->d->host_port ?: $this->allocatePort();
             $public = $this->d->public_service ?: array_key_first($compose['services']);
-            $final = ComposePolicy::harden($compose, $i->slug, $public, $this->d->internal_port ?: ($i->track->default_port ?: 8501), $port,
+            $internal = $this->d->internal_port ?: ($i->track->default_port ?: 8501);
+            $this->d->update(['public_service' => $public, 'internal_port' => $internal]); // dipakai health check
+            $final = ComposePolicy::harden($compose, $i->slug, $public, $internal, $port,
                 (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine);
             File::put("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES));
 
@@ -121,11 +123,24 @@ class Deployer
         $d->update(['status' => 'not_deployed', 'host_port' => null, 'url' => null]);
     }
 
+    /**
+     * Health check dari DALAM jaringan karya lewat container curl sekali pakai di Docker rootless.
+     * (Container `deployer` ada di Docker utama dan tidak bisa menjangkau loopback host; jalur ini juga tidak
+     * bergantung pada port host.) Bila docker gagal dijalankan, jatuh ke cek HTTP ke host.
+     */
     public static function healthy(Deployment $d): bool
     {
-        $host = config('fasinova.health_host', '127.0.0.1');
+        $svc = $d->public_service;
+        $port = $d->internal_port;
+        if ($svc && $port) {
+            $p = new Process(['docker', 'run', '--rm', '--network', $d->project().'_default', '--memory', '32m', '--pids-limit', '32',
+                config('fasinova.probe_image'), '-sf', '-o', '/dev/null', '--max-time', '5', "http://$svc:$port".$d->health_path]);
+            $p->setTimeout(90)->run();
+            if ($p->isSuccessful()) return true;
+            if (! in_array($p->getExitCode(), [125, 126, 127])) return false; // curl benar-benar gagal = tidak sehat
+        }
         try {
-            return Http::timeout(5)->get("http://$host:{$d->host_port}{$d->health_path}")->successful();
+            return Http::timeout(5)->get('http://'.config('fasinova.health_host', '127.0.0.1').":{$d->host_port}{$d->health_path}")->successful();
         } catch (\Throwable) {
             return false;
         }
@@ -151,6 +166,19 @@ class Deployer
             if ($now === null || str_ends_with($r, '^{}')) $now = $h;
         }
         if ($now !== $sha) throw new \RuntimeException("Tag $tag dipindah (sekarang ".($now ?? 'hilang')."), deploy dibatalkan.");
+    }
+
+    /** Decode JSON compose; objek kosong `{}` (mis. ipam) tetap objek, bukan berubah menjadi list `[]`. */
+    public static function decodeCompose(string $json): array
+    {
+        $walk = function ($v) use (&$walk) {
+            if ($v instanceof \stdClass) {
+                return (array) $v === [] ? $v : array_map($walk, (array) $v);
+            }
+            return is_array($v) ? array_map($walk, $v) : $v;
+        };
+        $d = json_decode($json);
+        return $d instanceof \stdClass ? $walk($d) : [];
     }
 
     private function allocatePort(): int
@@ -212,7 +240,7 @@ class Deployer
     private function history(\DateTimeInterface $started, string $result): void
     {
         DeployHistory::create(['deployment_id' => $this->d->id, 'triggered_by' => $this->d->triggered_by, 'commit_sha' => $this->d->commit_sha,
-            'result' => $result, 'duration_s' => now()->diffInSeconds($started, true)]);
+            'result' => $result, 'duration_s' => (int) round(abs(now()->diffInSeconds($started)))]);
     }
 
     private function notify(string $title, string $body, string $status): void

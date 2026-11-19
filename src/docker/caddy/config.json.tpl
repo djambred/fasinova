@@ -11,12 +11,12 @@
           "listen": [":443"],
           "routes": [
             {
-              "match": [{ "host": ["__DOMAIN__", "www.__DOMAIN__"] }],
+              "match": [{ "host": ["__DOMAIN__"__WWW__] }],
               "handle": [{ "handler": "reverse_proxy", "upstreams": [{ "dial": "127.0.0.1:8080" }] }],
               "terminal": true
             },
             {
-              "match": [{ "host": ["*.__DOMAIN__"] }],
+              __KARYA_MATCH__
               "handle": [{
                 "handler": "subroute",
                 "@id": "fz-karya",

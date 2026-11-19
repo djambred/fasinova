@@ -57,6 +57,19 @@ class PolicyTest extends TestCase
         $this->assertArrayNotHasKey('fz-db', $plain['networks']);
     }
 
+    public function test_compose_json_roundtrip_keeps_empty_objects(): void
+    {
+        $raw = '{"name":"x","networks":{"default":{"name":"x_default","ipam":{}}},"services":{"web":{"image":"i","command":null,"cap_add":[],"labels":{}}}}';
+        $c = \App\Services\Deployer::decodeCompose($raw);
+        $out = json_encode($c);
+        $this->assertStringContainsString('"ipam":{}', $out);      // mapping tetap {}
+        $this->assertStringContainsString('"labels":{}', $out);
+        $this->assertStringContainsString('"cap_add":[]', $out);    // list tetap []
+        $this->assertSame('i', $c['services']['web']['image']);
+        $h = ComposePolicy::harden($c, 's', 'web', 80, 20001, 0.5, 512);
+        $this->assertStringContainsString('"ipam":{}', json_encode($h));
+    }
+
     public function test_claims(): void
     {
         $w = ClaimChecker::warnings(['a' => 'Sistem ini 100% aman dan pasti benar', 'b' => 'hasil 95%'], 'cs');

@@ -24,7 +24,10 @@ class Innovation extends Model
     protected static function booted(): void
     {
         // Teks prodi (etalase publik) selalu ikut prodi terpilih.
-        static::saving(fn (self $i) => $i->study_program_id && $i->study_program = StudyProgram::find($i->study_program_id)?->name);
+        // (jangan jadikan arrow function: nilai balik false dari event `saving` membatalkan penyimpanan secara diam-diam)
+        static::saving(function (self $i): void {
+            if ($i->study_program_id) $i->study_program = StudyProgram::find($i->study_program_id)?->name;
+        });
 
         static::creating(function (self $i) {
             $i->slug ??= Str::slug($i->title);

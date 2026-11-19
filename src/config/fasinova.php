@@ -39,6 +39,7 @@ return [
     'max_services' => 5,
     'allowed_caps' => ['CHOWN', 'SETUID', 'SETGID'],
     'revision_days' => 7,
+    'probe_image' => env('PROBE_IMAGE', 'curlimages/curl:8.10.1'),
     'build_timeout' => 900,
     'claim_phrases' => ['100% aman', 'tidak bisa diretas', 'pasti', 'selalu', 'menggantikan manusia'],
 ];
