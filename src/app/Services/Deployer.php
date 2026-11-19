@@ -244,11 +244,11 @@ class Deployer
         return $p->isSuccessful() ? $p->getOutput() : '';
     }
 
-    /** Potongan log service publik ke log deploy (nilai rahasia disamarkan). */
+    /** Potongan log SEMUA service ke log deploy (penyebab sering ada di service belakang, mis. php-fpm di balik nginx; nilai rahasia disamarkan). */
     private function logTail(): void
     {
         try {
-            $p = new Process($this->compose('logs', '--no-color', '--tail', '25', $this->d->public_service), $this->d->dir());
+            $p = new Process($this->compose('logs', '--no-color', '--tail', '25'), $this->d->dir());
             $p->setTimeout(60)->run();
             foreach (preg_split('/\r?\n/', trim($p->getOutput().$p->getErrorOutput())) as $line) if ($line !== '') $this->log('health_check', 'err', $this->mask($line));
         } catch (\Throwable) {
