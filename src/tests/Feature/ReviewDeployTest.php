@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Admin\Resources\DeploymentResource\Pages\ListDeployments;
 use App\Filament\Admin\Resources\InnovationResource\Pages\ListInnovations;
 use App\Jobs\RunnerJob;
 use App\Models\Innovation;
@@ -162,5 +163,15 @@ class ReviewDeployTest extends TestCase
         Livewire::test(ListInnovations::class)->callTableAction('review', $i, $this->ok($i, 'approve'));
         $this->assertSame('submitted', $i->fresh()->status);
         $this->assertNull($i->repository->fresh()->locked_commit_sha);
+    }
+
+    public function test_deploy_actions_hidden_until_pic_has_locked_the_sha(): void
+    {
+        $i = $this->setUpInnovation();
+        $dep = $i->deployment;
+        $dep->update(['stack' => 'laravel', 'status' => 'failed']);   // daftar hanya memuat status selain not_deployed
+        Livewire::test(ListDeployments::class)->assertTableActionHidden('redeploy', $dep)->assertTableActionHidden('start', $dep);   // dulu: Redeploy → "SHA belum dikunci" → status failed
+        $i->repository->update(['locked_commit_sha' => 'abc123']);
+        Livewire::test(ListDeployments::class)->assertTableActionVisible('redeploy', $dep);
     }
 }

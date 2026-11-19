@@ -74,6 +74,8 @@ class DeploymentResource extends Resource
     private static function job(string $name, string $label, string $action, string $icon, bool $danger = false): Action
     {
         return Action::make($name)->authorize('update')->label($label)->icon($icon)->color($danger ? 'danger' : 'gray')->requiresConfirmation()
+            // Deploy hanya untuk karya yang sudah disetujui PIC (SHA terkunci); sebelum itu aksi ini tidak ada artinya dan hanya membuat status "gagal".
+            ->visible(fn (Deployment $d) => $action === 'remove' || filled($d->innovation?->repository?->locked_commit_sha))
             ->action(function (Deployment $d) use ($action, $name) {
                 if ($action === 'deploy') $d->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
                 RunnerJob::dispatch($d->id, $action);
