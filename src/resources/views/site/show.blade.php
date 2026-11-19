@@ -28,7 +28,6 @@
     <section class="bg-white border rounded-lg p-5"><h2 class="font-semibold mb-2">Kartu hasil</h2>
         @foreach($i->track->result_card_schema ?? [] as $f)
             @if($v = $i->resultCard->data[$f['key']] ?? null)
-                @continue($f['key'] === 'kalimat_sales')
                 <h3 class="text-xs uppercase text-slate-500 mt-3">{{ $f['label'] }}</h3><p class="whitespace-pre-line">{{ $v }}</p>
             @endif
         @endforeach

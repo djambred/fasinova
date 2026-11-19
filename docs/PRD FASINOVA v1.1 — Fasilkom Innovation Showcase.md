@@ -98,7 +98,6 @@ Form pengiriman dan checklist PIC dibangkitkan dari konfigurasi per peminatan, s
 | Angka hasil | Tabel algoritma: baseline + terbaik; F1, recall, akurasi; n data uji | Jumlah serangan uji, terdeteksi, alarm palsu; temuan sebelum/sesudah per tingkat; waktu deteksi |
 | Penjelasan awam | "Dari 100 kasus …, model mengenali sekitar …" | Analogi sederhana |
 | Keterbatasan | Wajib diisi | Wajib diisi |
-| Kalimat untuk sales | Maks. 3 kalimat | Maks. 3 kalimat |
 
 Sistem memberi peringatan ke PIC bila teks memuat "100% aman", "tidak bisa diretas", "pasti", "selalu", "menggantikan manusia", atau persentase akurasi tanpa nama metrik, dan menolak kartu AI tanpa baris baseline.
 
