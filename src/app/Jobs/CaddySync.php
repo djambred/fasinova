@@ -12,7 +12,7 @@ class CaddySync implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct() { $this->onQueue('deploy'); }
+    public function __construct() { $this->onQueue('ops'); }
 
     public function handle(CaddyClient $caddy): void
     {

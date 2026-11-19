@@ -28,6 +28,11 @@ class ComposePolicy
             foreach ((array) ($s['volumes'] ?? []) as $vol) {
                 $src = is_array($vol) ? (($vol['type'] ?? 'bind') === 'bind' ? ($vol['source'] ?? '') : '') : explode(':', $vol)[0];
                 if (str_contains($src, 'docker.sock')) { $v[] = "$name: mount docker.sock tidak diizinkan."; continue; }
+                if ($workdir && str_starts_with($src, rtrim($workdir, '/').'/') && ($real = realpath($src)) !== false && ($root = realpath($workdir)) !== false
+                    && $real !== $root && ! str_starts_with($real, $root.'/')) {
+                    $v[] = "$name: mount '$src' mengarah ke luar folder karya (symlink) tidak diizinkan."; // Docker mengikuti symlink; teks path saja tidak cukup
+                    continue;
+                }
                 $abs = str_starts_with($src, '/') || str_starts_with($src, '..') || str_starts_with($src, '~');
                 $inside = $workdir && str_starts_with($src, rtrim($workdir, '/').'/') && ! str_contains($src, '..');
                 if ($abs && ! $inside) $v[] = "$name: mount path host '$src' tidak diizinkan.";

@@ -22,6 +22,7 @@ class Deployer
     {
         $this->d = $d->load('innovation.track', 'innovation.repository', 'innovation.envVariables');
         $started = now();
+        $upStarted = false;
         $i = $this->d->innovation;
         $repo = $i->repository;
         $this->secrets = $i->envVariables->where('is_secret', true)->pluck('value')->filter(fn ($v) => strlen($v) >= 4)->all();
@@ -33,12 +34,14 @@ class Deployer
 
             $this->step('cloning');
             if (filled($repo->tag)) $this->assertTagUnchanged($repo->url, $repo->tag, $sha); // tanpa tag: SHA terkunci sudah cukup menjaga integritas
-            File::deleteDirectory($dir);
+            $this->removeDir($dir);
             File::ensureDirectoryExists(dirname($dir));
             $this->run(['git', 'clone', '--quiet', $repo->url.'.git', $dir], null, 'cloning', 300);
             $this->run(['git', 'checkout', '--quiet', '--detach', $sha], $dir, 'cloning');
             $head = trim($this->run(['git', 'rev-parse', 'HEAD'], $dir, 'cloning'));
             if ($head !== $sha) throw new \RuntimeException("HEAD $head bukan SHA terkunci $sha.");
+            // Symlink dari repo yang menunjuk ke luar folder karya = jalan membaca/menulis berkas karya lain atau host.
+            foreach (self::stripEscapingSymlinks($dir) as $rel) $this->log('cloning', 'err', "symlink keluar folder karya dihapus: $rel");
 
             $this->step('scanning');
             // Pemindaian rahasia bersifat penasihat: repo publik yang berisi kunci tidak membahayakan server, hanya pemiliknya.
@@ -62,17 +65,16 @@ class Deployer
                 $this->secrets[] = $dbEnv['DB_PASSWORD'];
             }
             $envText = $this->envFile($i->envVariables, $dbEnv);
-            File::put("$dir/.env", $envText);
-            chmod("$dir/.env", 0600);
-            foreach ($this->nestedEnvFiles($dir) as $path) { // mis. src/.env untuk Laravel yang di-bind-mount; menimpa .env ter-commit
-                File::put($path, $envText);
-                chmod($path, 0644); // dibaca user non-root di dalam container (rootless: bukan pemilik file)
-                $this->log('scanning', 'out', 'env ditulis ke '.ltrim(substr($path, strlen($dir)), '/'));
-            }
+            self::writeFile("$dir/.env", $envText, 0600);
             $json = $this->run(['docker', 'compose', '-p', $this->d->project(), '--project-directory', $dir, 'config', '--format', 'json'], $dir, 'scanning');
             $compose = self::decodeCompose($json) ?: throw new \RuntimeException('docker compose config tidak menghasilkan JSON.');
             $viol = ComposePolicy::check($compose, $i->track->forbidden_images ?? [], $dir);
             if ($viol) throw new \RuntimeException("Kebijakan compose dilanggar:\n- ".implode("\n- ", $viol));
+            // env juga ke folder aplikasi yang benar-benar di-mount/di-build (mis. src/.env untuk Laravel); menimpa .env ter-commit
+            foreach ($this->nestedEnvFiles($dir, $compose) as $path) {
+                self::writeFile($path, $envText, 0644); // dibaca user non-root di container (rootless: bukan pemilik file)
+                $this->log('scanning', 'out', 'env ditulis ke '.ltrim(substr($path, strlen($dir)), '/'));
+            }
             if ($i->track->code === 'cs' && ! $i->safe_service_ok) throw new \RuntimeException('Cyber Security: PIC belum menandai service aman.');
 
             $port = $this->d->host_port ?: $this->allocatePort();
@@ -84,6 +86,7 @@ class Deployer
             File::put("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES));
 
             $this->step('building');
+            $upStarted = true;
             $this->run($this->compose('up', '-d', '--build'), $dir, 'building', config('fasinova.build_timeout'));
 
             $this->step('starting');
@@ -97,6 +100,7 @@ class Deployer
             $this->notify('Demo live', $url, 'success');
         } catch (\Throwable $e) {
             $this->log('failed', 'err', $this->mask($e->getMessage()));
+            if ($upStarted) $this->downQuietly(); // jangan biarkan container setengah jadi terus memakan RAM (data/volume dipertahankan)
             $this->d->update(['status' => 'failed', 'finished_at' => now()]);
             $this->history($started, 'failed');
             $this->notify('Deploy gagal', 'Lihat log di menu Deploy.', 'danger');
@@ -130,7 +134,7 @@ class Deployer
             $this->run($this->compose('down', '-v', '--remove-orphans'), $d->dir(), 'remove');
         }
         if ($d->url) $this->proxy->tombstone($d); // hanya bila pernah live; host tetap menjawab 404 dengan sertifikat yang sama
-        File::deleteDirectory($d->dir());
+        $this->removeDir($d->dir());
         (new DbProvisioner)->drop($d); // data DB karya ikut dihapus saat stack dihapus
         $d->update(['status' => 'not_deployed', 'host_port' => null, 'url' => null]);
     }
@@ -180,15 +184,91 @@ class Deployer
         if ($now !== $sha) throw new \RuntimeException("Tag $tag dipindah (sekarang ".($now ?? 'hilang')."), deploy dibatalkan.");
     }
 
-    /** Berkas .env di folder level 1–2 yang perlu ditimpa: tempat .env.example berada, dan .env yang sudah ter-commit. */
-    private function nestedEnvFiles(string $dir): array
+    /**
+     * Folder aplikasi yang perlu .env sendiri: folder level 1–2 yang punya .env.example atau .env ter-commit, DAN yang
+     * benar-benar dipakai compose (di-mount atau jadi konteks build). Folder tak terpakai (mis. src_old/) dilewati.
+     */
+    private function nestedEnvFiles(string $dir, array $compose): array
     {
+        $roots = [];
+        foreach ((array) ($compose['services'] ?? []) as $s) {
+            $s = (array) $s;
+            foreach ((array) ($s['volumes'] ?? []) as $vol) {
+                $src = is_array($vol) ? (($vol['type'] ?? 'bind') === 'bind' ? ($vol['source'] ?? '') : '') : explode(':', (string) $vol)[0];
+                if ($src !== '' && str_starts_with($src, '/')) $roots[] = rtrim($src, '/');
+            }
+            $ctx = is_array($s['build'] ?? null) ? ($s['build']['context'] ?? null) : ($s['build'] ?? null);
+            if (is_string($ctx) && str_starts_with($ctx, '/')) $roots[] = rtrim($ctx, '/');
+        }
+        $used = fn (string $folder) => collect($roots)->contains(fn ($r) => $r === $folder || str_starts_with($folder, $r.'/') || str_starts_with($r, $folder.'/'));
         $found = [];
         foreach (['*', '*/*'] as $depth) {
-            foreach (File::glob("$dir/$depth/.env.example") as $f) $found[] = dirname($f).'/.env';
-            foreach (File::glob("$dir/$depth/.env") as $f) $found[] = $f;
+            foreach (File::glob("$dir/$depth/.env.example") as $f) $found[dirname($f)] = dirname($f).'/.env';
+            foreach (File::glob("$dir/$depth/.env") as $f) $found[dirname($f)] = $f;
         }
-        return array_values(array_filter(array_unique($found), fn ($p) => ! preg_match('#/(node_modules|vendor)/#', $p)));
+        return array_values(array_filter($found, fn ($path, $folder) => $used($folder) && ! preg_match('#/(node_modules|vendor)/#', $path), ARRAY_FILTER_USE_BOTH));
+    }
+
+    /** Tulis berkas tanpa mengikuti symlink: bila path sudah berupa symlink, putuskan dulu (jangan menulis ke targetnya). */
+    public static function writeFile(string $path, string $text, int $mode): void
+    {
+        if (is_link($path)) unlink($path);
+        file_put_contents($path, $text);
+        chmod($path, $mode);
+    }
+
+    /**
+     * Hapus semua symlink di folder clone yang menunjuk ke luar folder itu (atau menggantung). Docker mengikuti symlink
+     * saat bind mount/build, dan penulisan env mengikuti symlink; keduanya bisa menjangkau berkas karya lain dan host.
+     * @return list<string> path relatif yang dihapus
+     */
+    public static function stripEscapingSymlinks(string $dir): array
+    {
+        $root = realpath($dir) ?: throw new \RuntimeException("Folder $dir tidak ada.");
+        $removed = [];
+        $it = new \RecursiveIteratorIterator(new \RecursiveCallbackFilterIterator(
+            new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
+            fn (\SplFileInfo $f) => $f->isLink() || ! $f->isDir() || $f->getFilename() !== '.git'   // jangan masuk ke .git
+        ), \RecursiveIteratorIterator::SELF_FIRST);
+        foreach ($it as $f) {
+            if (! $f->isLink()) continue;
+            $real = realpath($f->getPathname());
+            if ($real === false || ($real !== $root && ! str_starts_with($real, $root.'/'))) {
+                unlink($f->getPathname());
+                $removed[] = ltrim(substr($f->getPathname(), strlen($root)), '/');
+            }
+        }
+        return $removed;
+    }
+
+    /**
+     * Hapus folder karya. Di Docker rootless, berkas yang dibuat proses non-root di container (mis. data MariaDB)
+     * dimiliki sub-uid dan tidak bisa dihapus `runner`; hapus lewat container (root di container = runner) bila perlu.
+     */
+    private function removeDir(string $dir): void
+    {
+        if (! is_dir($dir)) return;
+        File::deleteDirectory($dir);
+        if (is_dir($dir)) {
+            $p = new Process(['docker', 'run', '--rm', '--user', '0', '--entrypoint', 'sh', '-v', "$dir:/d", config('fasinova.probe_image'),
+                '-c', 'rm -rf /d/* /d/.[!.]* /d/..?* 2>/dev/null; true']);
+            $p->setTimeout(300)->run();
+            File::deleteDirectory($dir);
+        }
+        if (is_dir($dir)) throw new \RuntimeException("Folder $dir tidak bisa dihapus.");
+    }
+
+    /** Hentikan dan buang container stack (tanpa -v) setelah deploy gagal; galat diabaikan agar tidak menutupi penyebab asli. */
+    private function downQuietly(): void
+    {
+        try {
+            if (File::exists($this->d->dir().'/fasinova.compose.json')) {
+                $this->run($this->compose('down', '--remove-orphans'), $this->d->dir(), 'failed', 180);
+                $this->log('failed', 'out', 'container dihentikan karena deploy gagal');
+            }
+        } catch (\Throwable $e) {
+            $this->log('failed', 'err', 'gagal menghentikan container: '.$this->mask($e->getMessage()));
+        }
     }
 
     /**
@@ -246,7 +326,12 @@ class Deployer
         [$lo, $hi] = array_map('intval', explode('-', config('fasinova.port_range')));
         $used = Deployment::whereNotNull('host_port')->pluck('host_port')->all();
         for ($p = $lo; $p <= $hi; $p++) {
-            if (! in_array($p, $used)) { $this->d->update(['host_port' => $p]); return $p; }
+            if (in_array($p, $used)) continue;
+            try { // kolom host_port unik: bila worker lain mengambil port yang sama, coba port berikutnya
+                $this->d->update(['host_port' => $p]);
+                return $p;
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            }
         }
         throw new \RuntimeException('Rentang port habis.');
     }

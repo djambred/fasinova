@@ -11,6 +11,17 @@ x-app: &app
     redis: { condition: service_healthy }
   restart: unless-stopped
 
+x-deployer: &deployer
+  <<: *app
+  user: "${RUNNER_UID}:${RUNNER_GID}"
+  environment:
+    DOCKER_HOST: unix:///run/user/${RUNNER_UID}/docker.sock
+  volumes:
+    - storage:/var/www/html/storage
+    - /run/user/${RUNNER_UID}/docker.sock:/run/user/${RUNNER_UID}/docker.sock
+    - /home/runner/apps:/home/runner/apps   # path sama di host & container
+    - ${CADDY_SOCKET_DIR:-/run/fasinova}:/run/fasinova  # admin API Caddy (unix socket)
+
 services:
   app:
     <<: *app
@@ -19,17 +30,13 @@ services:
     <<: *app
     command: php artisan queue:work redis --queue=default --tries=3
 
-  deployer:                       # satu-satunya yang memegang socket Docker rootless
-    <<: *app
-    command: php artisan queue:work redis --queue=deploy --tries=1 --timeout=1200
-    user: "${RUNNER_UID}:${RUNNER_GID}"
-    environment:
-      DOCKER_HOST: unix:///run/user/${RUNNER_UID}/docker.sock
-    volumes:
-      - storage:/var/www/html/storage
-      - /run/user/${RUNNER_UID}/docker.sock:/run/user/${RUNNER_UID}/docker.sock
-      - /home/runner/apps:/home/runner/apps   # path sama di host & container
-      - ${CADDY_SOCKET_DIR:-/run/fasinova}:/run/fasinova  # admin API Caddy (unix socket)
+  deployer:                       # pemegang socket Docker rootless: build/deploy/stop/hapus (satu per satu)
+    <<: *deployer
+    command: php artisan queue:work redis --queue=deploy --tries=0 --timeout=1200
+
+  deployer-ops:                   # health check & sinkron rute Caddy; terpisah agar build panjang tidak menahannya
+    <<: *deployer
+    command: php artisan queue:work redis --queue=ops --tries=1 --timeout=900
 
   scheduler:
     <<: *app

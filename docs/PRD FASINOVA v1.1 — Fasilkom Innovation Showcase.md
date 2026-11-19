@@ -173,7 +173,7 @@ Sengaja **tidak** ada fitur console/exec ke container, upload file ke container,
 
 1. PIC menyetujui checklist (atau menekan Redeploy); job masuk antrean `deploy` otomatis dengan SHA yang dikunci saat persetujuan. Deploy otomatis dilewati bila stack belum dipilih, peminatan tidak boleh deploy, atau Cyber Security belum ditandai aman.
 2. Deployer meng-clone repo publik lewat HTTPS tanpa kredensial ke `/home/runner/apps/<slug>` dan memastikan HEAD = SHA terkunci.
-3. Pemindaian rahasia dengan `gitleaks`: bila ada `.env` ter-commit atau kunci yang terdeteksi, deploy dibatalkan dan mahasiswa diminta merotasi kunci (repo publik berarti kunci itu sudah bocor).
+3. Pengamanan clone: **semua symlink yang menunjuk ke luar folder karya dihapus** (Docker mengikuti symlink saat bind mount/build; tanpa ini repo bisa membaca `.env` karya lain). Lalu pemindaian rahasia dengan `gitleaks` bersifat **penasihat**: `.env` ter-commit ditimpa otomatis dengan env dari FASINOVA, dan kunci yang terdeteksi hanya memunculkan peringatan ke PIC dan tim (deploy lanjut, karena repo publik yang berisi kunci tidak membahayakan server, hanya pemiliknya). `GITLEAKS_BLOCK=true` mengembalikan mode ketat (deploy dibatalkan).
 4. Bila karya memilih database (6.6), deployer menyiapkan database + user karya dan menambahkan `DB_*` ke `.env`. Deployer menulis `.env` (mode `600`), menjalankan `docker compose config --format json`, lalu memeriksa kebijakan 6.3.
 5. Deployer membuat override (kuota, port lokal, jaringan) dan menjalankan `docker compose -p fz-<slug> ... up -d --build` terhadap daemon rootless. Batas build 15 menit.
 6. Health check ke `http://127.0.0.1:<port><path>` hingga 10 kali, jeda 6 detik.
@@ -475,7 +475,7 @@ Dua risiko paling mahal: runner disalahgunakan oleh kode karya, dan demo online 
 4. PIC mengembalikan paket; mahasiswa melihat catatan per item dan tenggat 7 hari; status otomatis "terlambat" bila lewat.
 5. PIC menyetujui; SHA terkunci; Deploy menghasilkan demo Streamlit contoh yang terbuka di `https://<slug>.<domain>` dengan HTTPS valid dan websocket berfungsi, dalam ≤ 10 menit.
 6. Compose contoh dengan `privileged: true`, mount `docker.sock`, atau `network_mode: host` ditolak dengan pesan yang jelas.
-7. Container demo tidak bisa menjangkau PostgreSQL, Redis, atau port lokal FASINOVA; repo dengan .env ter-commit ditolak oleh gitleaks.
+7. Container demo tidak bisa menjangkau PostgreSQL, Redis, atau port lokal FASINOVA; repo dengan `.env` ter-commit tetap bisa di-deploy (env FASINOVA yang berlaku, peringatan ke PIC), dan repo dengan symlink ke luar folder karya tidak bisa membaca berkas karya lain atau host.
 8. Stop dan Hapus menghentikan container; Hapus juga membuang database karya dan mengganti rute Caddy dengan jawaban 404 (sertifikat tetap ada); subdomain mengembalikan 404.
 9. Demo yang dimatikan manual di runner terdeteksi health check; tombol "Coba demo" diganti video dalam ≤ 15 menit.
 10. Karya Cyber Security dengan image `bkimminich/juice-shop` tidak bisa di-deploy.
