@@ -12,7 +12,7 @@ class Deployment extends Model
     protected function casts(): array
     {
         return [
-            'allowed_caps' => 'array', 'db_password' => 'encrypted', 'needs_redeploy' => 'boolean', 'started_at' => 'datetime',
+            'allowed_caps' => 'array', 'db_password' => 'encrypted', 'needs_redeploy' => 'boolean', 'upstream_tls' => 'boolean', 'started_at' => 'datetime',
             'finished_at' => 'datetime', 'last_health_at' => 'datetime',
         ];
     }

@@ -97,6 +97,23 @@ class PolicyTest extends TestCase
         $this->assertNotEmpty(ComposePolicy::check(['services' => ['a' => ['image' => 'x', 'cap_add' => ['SYS_ADMIN']]]], []));   // tetap ditolak
     }
 
+    public function test_app_that_handles_its_own_tls_is_detected(): void
+    {
+        $D = \App\Services\Deployer::class;
+        $this->assertTrue($D::redirectsToHttps(301, 'https://dagopark-uji.fasinova.my.id/'));
+        $this->assertTrue($D::redirectsToHttps(308, 'HTTPS://x/'));
+        $this->assertFalse($D::redirectsToHttps(301, 'http://x/'));        // redirect ke http bukan sinyal TLS
+        $this->assertFalse($D::redirectsToHttps(200, 'https://x/'));       // bukan redirect
+        $this->assertFalse($D::redirectsToHttps(null, ''));
+        $this->assertFalse($D::redirectsToHttps(0, ''));                   // tidak ada respons
+        $compose = ['services' => ['nginx' => ['ports' => [['target' => 443, 'published' => '443'], ['target' => 80, 'published' => '80']]],
+            'web' => ['ports' => ['8080:80/tcp', '127.0.0.1:8443:443']], 'php' => ['image' => 'x']]];
+        $this->assertEqualsCanonicalizing([443, 80], $D::declaredTargets($compose, 'nginx'));
+        $this->assertEqualsCanonicalizing([80, 443], $D::declaredTargets($compose, 'web'));    // bentuk string, dengan /tcp dan host ip
+        $this->assertSame([], $D::declaredTargets($compose, 'php'));
+        $this->assertSame([], $D::declaredTargets($compose, 'tidak-ada'));
+    }
+
     public function test_claims(): void
     {
         $w = ClaimChecker::warnings(['a' => 'Sistem ini 100% aman dan pasti benar', 'b' => 'hasil 95%'], 'cs');

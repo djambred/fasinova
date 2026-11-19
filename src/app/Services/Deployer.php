@@ -26,7 +26,7 @@ class Deployer
         $i = $this->d->innovation;
         $repo = $i->repository;
         $this->secrets = $i->envVariables->where('is_secret', true)->pluck('value')->filter(fn ($v) => strlen($v) >= 4)->all();
-        $this->d->update(['status' => 'queued', 'started_at' => $started, 'finished_at' => null, 'commit_sha' => $repo->locked_commit_sha]);
+        $this->d->update(['status' => 'queued', 'started_at' => $started, 'finished_at' => null, 'commit_sha' => $repo->locked_commit_sha, 'upstream_tls' => false]);
 
         try {
             $sha = $repo->locked_commit_sha ?: throw new \RuntimeException('SHA belum dikunci (karya belum disetujui).');
@@ -93,6 +93,18 @@ class Deployer
             $this->step('health_check');
             if (! $this->waitHealthy()) throw new \RuntimeException('Health check gagal setelah 10 percobaan.');
 
+            // Aplikasi yang menangani TLS sendiri (port 80 hanya `return 301 https://...`, port 443 melayani aplikasi): teruskan ke 443 lewat TLS.
+            [$code, $redirect] = self::probe($this->d);
+            if (self::redirectsToHttps($code, $redirect) && in_array(443, self::declaredTargets($compose, $public))) {
+                $this->log('health_check', 'out', "port $internal hanya mengalihkan ke https ($redirect); beralih ke port 443 dengan TLS");
+                $this->d->update(['upstream_tls' => true, 'internal_port' => 443]);
+                $final = ComposePolicy::harden($compose, $i->slug, $public, 443, $port,
+                    (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine);
+                File::put("$dir/fasinova.compose.json", json_encode($final, JSON_UNESCAPED_SLASHES));
+                $this->run($this->compose('up', '-d'), $dir, 'starting', 300);   // hanya memetakan ulang port; image sudah ada
+                if (! $this->waitHealthy()) throw new \RuntimeException('Health check gagal setelah beralih ke port 443 (TLS).');
+            }
+
             $this->proxy->upsert($this->d->refresh());
             $url = 'https://'.$this->d->subdomain.'.'.config('fasinova.domain');
             $this->d->update(['status' => 'live', 'url' => $url, 'needs_redeploy' => false, 'health_failures' => 0, 'finished_at' => now()]);
@@ -146,20 +158,46 @@ class Deployer
      */
     public static function healthy(Deployment $d): bool
     {
-        $svc = $d->public_service;
-        $port = $d->internal_port;
-        if ($svc && $port) {
-            $p = new Process(['docker', 'run', '--rm', '--network', $d->project().'_default', '--memory', '32m', '--pids-limit', '32',
-                config('fasinova.probe_image'), '-sf', '-o', '/dev/null', '--max-time', '5', "http://$svc:$port".$d->health_path]);
-            $p->setTimeout(90)->run();
-            if ($p->isSuccessful()) return true;
-            if (! in_array($p->getExitCode(), [125, 126, 127])) return false; // curl benar-benar gagal = tidak sehat
-        }
-        try {
+        [$code] = self::probe($d);
+        if ($code !== null) return $code >= 200 && $code < 400;
+        try { // docker tak bisa dijalankan: cek HTTP ke host (hanya jalan bila host terjangkau dari container ini)
             return Http::timeout(5)->get('http://'.config('fasinova.health_host', '127.0.0.1').":{$d->host_port}{$d->health_path}")->successful();
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * Satu permintaan dari DALAM jaringan karya lewat container curl sekali pakai di Docker rootless.
+     * @return array{0:?int,1:string} [kode HTTP, URL redirect]; kode null bila probe tak bisa dijalankan atau tak ada respons
+     */
+    public static function probe(Deployment $d): array
+    {
+        if (! $d->public_service || ! $d->internal_port) return [null, ''];
+        $scheme = $d->upstream_tls ? 'https' : 'http';
+        $p = new Process(['docker', 'run', '--rm', '--network', $d->project().'_default', '--memory', '32m', '--pids-limit', '32',
+            config('fasinova.probe_image'), '-s', '-k', '-o', '/dev/null', '--max-time', '5', '-w', '%{http_code} %{redirect_url}',
+            "$scheme://{$d->public_service}:{$d->internal_port}{$d->health_path}"]);
+        $p->setTimeout(90)->run();
+        if (in_array($p->getExitCode(), [125, 126, 127])) return [null, ''];       // docker/jaringan bermasalah
+        [$code, $redirect] = array_pad(explode(' ', trim($p->getOutput()), 2), 2, '');
+        return [(int) $code ?: 0, $redirect];                                         // 0 = tidak ada respons (curl gagal)
+    }
+
+    /** Respons 3xx ke alamat https = aplikasi menangani TLS sendiri. */
+    public static function redirectsToHttps(?int $code, string $redirect): bool
+    {
+        return in_array($code, [301, 302, 307, 308], true) && str_starts_with(strtolower($redirect), 'https://');
+    }
+
+    /** Port tujuan yang dideklarasikan service di `ports:` (bentuk panjang hasil `compose config`, atau string). */
+    public static function declaredTargets(array $compose, string $service): array
+    {
+        $t = [];
+        foreach ((array) ($compose['services'][$service]['ports'] ?? []) as $p) {
+            $t[] = (int) (is_array($p) ? ($p['target'] ?? 0) : array_slice(explode(':', preg_replace('#/.*$#', '', (string) $p)), -1)[0]);
+        }
+        return array_values(array_filter($t));
     }
 
     private function waitHealthy(): bool
