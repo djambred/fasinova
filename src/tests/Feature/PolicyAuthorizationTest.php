@@ -44,7 +44,7 @@ class PolicyAuthorizationTest extends TestCase
         $admin = User::where('role', 'admin')->first();
 
         $i = Innovation::create(['title' => 'X', 'track_id' => $ai->id, 'owner_id' => $owner->id, 'supervisor_id' => $sup->id,
-            'status' => 'draft', 'members' => [['nim' => '222', 'name' => 'M']]]);
+            'study_program_id' => $prodi->id, 'status' => 'draft', 'members' => [['nim' => '222', 'name' => 'M']]]);
 
         // lihat
         foreach ([$owner, $member, $sup, $kaprodi, $pic, $admin] as $ok) $this->assertTrue($this->can($ok, 'view', $i), $ok->role);
@@ -56,15 +56,14 @@ class PolicyAuthorizationTest extends TestCase
         $i->update(['status' => 'submitted']);
         $this->assertFalse($this->can($owner, 'update', $i));
         $this->assertFalse($this->can($owner, 'delete', $i));
-        // periksa: hanya PIC peminatan itu / admin
-        $this->assertTrue($this->can($pic, 'review', $i));
-        $this->assertFalse($this->can($picCs, 'review', $i));
-        $this->assertFalse($this->can($sup, 'review', $i));
-        $this->assertFalse($this->can($owner, 'review', $i));
-        // deploy/terbit
+        // periksa: PIC peminatan itu, admin, dan dosen dalam lingkup karya (pembimbing, kaprodi/dekan prodi karya)
+        $stranger = $this->u('dosen', ['kode_dosen' => 'D9']);                 // dosen lain: di luar lingkup
+        foreach ([$pic, $sup, $kaprodi, $admin] as $ok) $this->assertTrue($this->can($ok, 'review', $i), "review {$ok->role}");
+        foreach ([$picCs, $stranger, $owner, $other] as $no) $this->assertFalse($this->can($no, 'review', $i), "review {$no->role}");
+        // deploy/terbit/tandai aman: lingkup yang sama
         foreach (['deploy', 'publish', 'markSafe'] as $a) {
-            $this->assertTrue($this->can($pic, $a, $i)); $this->assertTrue($this->can($admin, $a, $i));
-            foreach ([$owner, $sup, $kaprodi, $picCs] as $no) $this->assertFalse($this->can($no, $a, $i), "$a {$no->role}");
+            foreach ([$pic, $sup, $kaprodi, $admin] as $ok) $this->assertTrue($this->can($ok, $a, $i), "$a {$ok->role}");
+            foreach ([$owner, $other, $picCs, $stranger] as $no) $this->assertFalse($this->can($no, $a, $i), "$a {$no->role}");
         }
         // persetujuan pembimbing: hanya pembimbing itu, sekali saja
         $this->assertTrue($this->can($sup, 'approveAsSupervisor', $i));

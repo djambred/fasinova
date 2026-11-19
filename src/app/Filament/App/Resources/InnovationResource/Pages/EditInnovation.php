@@ -74,6 +74,7 @@ class EditInnovation extends EditRecord
                     $problems = collect([
                         ! $i->supervisor_approved_at ? 'Pembimbing belum menyetujui.' : null,
                         blank($i->form_type) ? 'Bentuk karya belum dipilih.' : null,
+                        blank($i->study_program_id) ? 'Program studi belum dipilih (langkah Pembimbing & tim).' : null,
                         $i->isDeployable() && empty($i->repository?->validation_report['ok']) ? 'Validasi repo belum lolos.' : null,
                         blank($i->abstract) ? 'Abstrak belum diisi.' : null,
                         empty($m['poster']) ? 'Gambar poster belum diunggah.' : null,

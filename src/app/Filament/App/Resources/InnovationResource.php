@@ -132,7 +132,9 @@ class InnovationResource extends Resource
                 ]),
 
                 Step::make('Pembimbing & tim')->schema([
-                    Select::make('study_program_id')->label('Program studi')->options(\App\Models\StudyProgram::pluck('name', 'id'))->searchable()->required()
+                    // Tidak wajib saat Simpan (galat di langkah yang sedang tidak tampil membuat Simpan gagal tanpa penjelasan); dicek saat Kirim paket.
+                    Select::make('study_program_id')->label('Program studi')->options(\App\Models\StudyProgram::pluck('name', 'id'))->searchable()
+                        ->afterStateHydrated(fn ($component, $state) => $state ?: $component->state(auth()->user()?->study_program_id))   // karya lama tanpa prodi: isi dari prodi mahasiswa
                         ->helperText('Kaprodi prodi ini dan dosen pembimbing menjadi PIC karya Anda.'),
                     Select::make('supervisor_id')->label('Dosen pembimbing')->options(User::where('role', 'dosen')->pluck('name', 'id'))->searchable()->required(),
                     TextInput::make('academic_period')->label('Periode TA (mis. 2026/2027)'),

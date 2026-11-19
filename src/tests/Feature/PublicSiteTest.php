@@ -128,7 +128,7 @@ class PublicSiteTest extends TestCase
         $i = $this->make('draft');
         $f = \App\Models\Faculty::create(['code' => 'F', 'name' => 'F']);
         $p = \App\Models\StudyProgram::create(['faculty_id' => $f->id, 'code' => 'P', 'name' => 'P']);
-        $i->owner->update(['study_program_id' => $p->id]);
+        $i->update(['study_program_id' => $p->id]);                     // cakupan kaprodi mengikuti prodi pada KARYA
         $sup = User::create(['name' => 'S', 'email' => 's@x.test', 'password' => 'pw', 'role' => 'dosen', 'kode_dosen' => 'S1']);
         $kap = User::create(['name' => 'K', 'email' => 'k@x.test', 'password' => 'pw', 'role' => 'dosen', 'kode_dosen' => 'K1']);
         $p->update(['head_id' => $kap->id]);

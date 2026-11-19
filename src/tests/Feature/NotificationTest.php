@@ -67,9 +67,12 @@ class NotificationTest extends TestCase
     public function test_pics_fall_back_to_admin_and_inquiry_notifies_admin(): void
     {
         [$i, , , , $pic] = $this->fixture();
-        $this->assertTrue(Notify::pics($i)->contains($pic));
+        $pics = Notify::pics($i);
+        $this->assertTrue($pics->contains($pic));                          // PIC peminatan
+        $this->assertTrue($pics->contains($i->supervisor));                // pembimbing ikut sebagai PIC lingkup karya
         $pic->tracksAsPic()->detach();
-        $this->assertTrue(Notify::pics($i->fresh())->every(fn ($u) => $u->role === 'admin'));
+        $i->update(['supervisor_id' => null]);                              // tak ada PIC peminatan, pembimbing, kaprodi, maupun dekan
+        $this->assertTrue(Notify::pics($i->fresh('track'))->every(fn ($u) => $u->role === 'admin'));   // baru jatuh ke admin
 
         $i->update(['status' => 'published', 'slug' => 'karya-a']);
         $this->post('/karya/karya-a/kolaborasi', ['name' => 'Budi', 'email' => 'b@x.co', 'message' => 'hai', 'pdp' => 1])->assertRedirect();

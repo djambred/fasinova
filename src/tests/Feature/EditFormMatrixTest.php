@@ -31,7 +31,7 @@ class EditFormMatrixTest extends TestCase
             foreach ($types as $ft) {
                 $title = "T {$track->code} $ft";
                 Livewire::test(CreateInnovation::class)
-                    ->fillForm(['track_id' => $track->id, 'form_type' => $ft, 'title' => $title, 'supervisor_id' => $sup->id])
+                    ->fillForm(['track_id' => $track->id, 'form_type' => $ft, 'title' => $title, 'supervisor_id' => $sup->id, 'study_program_id' => 1])
                     ->call('create')->assertRedirect();
                 $i = Innovation::where('title', $title)->firstOrFail();
                 $this->get("/app/innovations/{$i->id}/edit")->assertOk();
