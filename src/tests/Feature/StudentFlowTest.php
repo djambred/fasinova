@@ -182,4 +182,14 @@ class StudentFlowTest extends TestCase
         $this->assertSame('submitted', $i->fresh()->status);                 // terkirim tanpa kartu hasil
         $this->assertSame([true], collect(Track::where('code', 'ai')->first()->result_card_schema)->pluck('required')->unique()->all());
     }
+
+    public function test_student_list_renders_when_karya_has_pic_review_notes(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $i = $this->completeDraft($mhs, $sup, $prodi);
+        \App\Models\Review::create(['innovation_id' => $i->id, 'reviewer_id' => $sup->id, 'decision' => 'approve', 'checklist_result' => [], 'note' => 'Bagus']);
+        \Livewire\Livewire::test(\App\Filament\App\Resources\InnovationResource\Pages\ListInnovations::class)
+            ->assertSuccessful()->assertTableActionVisible('notes', $i);   // dulu 500: ikon "chat-bubble-left-text" tidak ada
+        $this->get('/app/innovations')->assertOk();
+    }
 }

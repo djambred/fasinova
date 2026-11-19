@@ -191,7 +191,7 @@ class InnovationResource extends Resource
             TextColumn::make('deployment.url')->label('Demo')->url(fn ($state) => $state, true),
         ])->recordActions([
             EditAction::make(),
-            Action::make('notes')->label('Catatan PIC')->icon('heroicon-o-chat-bubble-left-text')->modalSubmitAction(false)
+            Action::make('notes')->label('Catatan PIC')->icon('heroicon-o-chat-bubble-bottom-center-text')->modalSubmitAction(false)
                 ->visible(fn (Innovation $record) => $record->reviews->isNotEmpty())
                 ->schema(fn (Innovation $record) => collect($record->reviews->last()->checklist_result ?? [])->filter(fn ($i) => $i['status'] === 'fix' || $i['note'])
                     ->map(fn ($i) => Text::make(($i['status'] === 'fix' ? '🔧 ' : '✅ ').$i['item'].($i['note'] ? ": {$i['note']}" : '')))->all()),
