@@ -9,11 +9,11 @@ use Illuminate\Support\Facades\Http;
 /**
  * Atur rute `<subdomain>.<domain>` → 127.0.0.1:<port> lewat admin API Caddy.
  * Admin API hanya lewat unix socket (tidak ada port jaringan). Rute ber-ID `fz-<id deployment>`,
- * disisipkan di subroute `fz-karya` (lihat docker/caddy/config.json.tpl).
+ * disisipkan di server `fz-server` (lihat docker/caddy/config.json.tpl).
  */
 class CaddyClient
 {
-    public const SUBROUTE = 'fz-karya';
+    public const SERVER = 'fz-server';
 
     private function http(): PendingRequest
     {
@@ -37,8 +37,9 @@ class CaddyClient
     public function upsert(Deployment $d): void
     {
         $this->delete($d);
-        // rute karya dipasang di depan catch-all 404
-        $this->http()->put('/id/'.self::SUBROUTE.'/routes/0', self::route($d))->throw();
+        // Rute karya di LEVEL ATAS server (index 0, sebelum catch-all 404): Caddy hanya mengelola sertifikat
+        // otomatis untuk host matcher di rute level atas, bukan yang bersarang di subroute.
+        $this->http()->put('/id/'.self::SERVER.'/routes/0', self::route($d))->throw();
     }
 
     public function delete(Deployment $d): void

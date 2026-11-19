@@ -39,11 +39,11 @@ class CaddyClientTest extends TestCase
     {
         $d = $this->deployment();
         // delete 404 diabaikan; put harus 2xx
-        Http::fake(['*/id/fz-karya/routes/0' => Http::response('', 200), '*/id/fz-*' => Http::response('', 404)]);
+        Http::fake(['*/id/fz-server/routes/0' => Http::response('', 200), '*/id/fz-*' => Http::response('', 404)]);
         (new CaddyClient)->upsert($d);
         Http::assertSentInOrder([
             fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/id/fz-'.$d->id),
-            fn (Request $r) => $r->method() === 'PUT' && str_ends_with($r->url(), '/id/fz-karya/routes/0') && $r['@id'] === 'fz-'.$d->id,
+            fn (Request $r) => $r->method() === 'PUT' && str_ends_with($r->url(), '/id/fz-server/routes/0') && $r['@id'] === 'fz-'.$d->id,
         ]);
     }
 

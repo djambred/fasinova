@@ -8,6 +8,7 @@
           "routes": [{ "handle": [{ "handler": "static_response", "status_code": 308, "headers": { "Location": ["https://{http.request.host}{http.request.uri}"] } }] }]
         },
         "main": {
+          "@id": "fz-server",
           "listen": [":443"],
           "routes": [
             {
@@ -17,11 +18,7 @@
             },
             {
               __KARYA_MATCH__
-              "handle": [{
-                "handler": "subroute",
-                "@id": "fz-karya",
-                "routes": [{ "handle": [{ "handler": "static_response", "status_code": 404, "body": "Karya tidak ditemukan" }] }]
-              }],
+              "handle": [{ "handler": "static_response", "status_code": 404, "body": "Karya tidak ditemukan" }],
               "terminal": true
             }
           ]
