@@ -117,7 +117,7 @@ class Deployer
         if (File::exists($d->dir().'/fasinova.compose.json')) {
             $this->run($this->compose('down', '-v', '--remove-orphans'), $d->dir(), 'remove');
         }
-        $this->proxy->delete($d);
+        if ($d->url) $this->proxy->tombstone($d); // hanya bila pernah live; host tetap menjawab 404 dengan sertifikat yang sama
         File::deleteDirectory($d->dir());
         (new DbProvisioner)->drop($d); // data DB karya ikut dihapus saat stack dihapus
         $d->update(['status' => 'not_deployed', 'host_port' => null, 'url' => null]);

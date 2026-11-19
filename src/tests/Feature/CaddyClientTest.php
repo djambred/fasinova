@@ -47,6 +47,18 @@ class CaddyClientTest extends TestCase
         ]);
     }
 
+    public function test_tombstone_replaces_route_with_404_on_same_id(): void
+    {
+        $d = $this->deployment();
+        Http::fake(['*/id/fz-server/routes/0' => Http::response('', 200), '*/id/fz-*' => Http::response('', 404)]);
+        (new CaddyClient)->tombstone($d);
+        Http::assertSentInOrder([
+            fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/id/fz-'.$d->id),
+            fn (Request $r) => $r->method() === 'PUT' && $r['@id'] === 'fz-'.$d->id && $r['handle'][0]['handler'] === 'static_response'
+                && $r['handle'][0]['status_code'] === 404 && $r['match'][0]['host'] === ['demo-satu.fasinova.id'],
+        ]);
+    }
+
     public function test_ensure_skips_when_route_is_current(): void
     {
         $d = $this->deployment();

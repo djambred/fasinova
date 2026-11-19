@@ -48,6 +48,21 @@ class CaddyClient
         if (! $r->successful() && $r->status() !== 404 && ! str_contains($r->body(), 'unknown object ID')) $r->throw();
     }
 
+    /**
+     * Saat karya dihapus: ganti rute dengan jawaban 404 untuk host itu (ID sama, jadi deploy ulang otomatis menimpanya).
+     * Host tetap terdaftar di rute level atas sehingga sertifikatnya tetap ada dan pengunjung melihat 404, bukan galat TLS.
+     */
+    public function tombstone(Deployment $d): void
+    {
+        $this->delete($d);
+        $this->http()->put('/id/'.self::SERVER.'/routes/0', [
+            '@id' => self::routeId($d),
+            'match' => [['host' => [$d->subdomain.'.'.config('fasinova.domain')]]],
+            'handle' => [['handler' => 'static_response', 'status_code' => 404, 'body' => 'Karya tidak ditemukan atau sudah dihapus']],
+            'terminal' => true,
+        ])->throw();
+    }
+
     /** Pasang ulang rute yang hilang/berubah (mis. Caddy restart). @return bool true bila ada perubahan */
     public function ensure(Deployment $d): bool
     {

@@ -476,7 +476,7 @@ Dua risiko paling mahal: runner disalahgunakan oleh kode karya, dan demo online 
 5. PIC menyetujui; SHA terkunci; Deploy menghasilkan demo Streamlit contoh yang terbuka di `https://<slug>.<domain>` dengan HTTPS valid dan websocket berfungsi, dalam ≤ 10 menit.
 6. Compose contoh dengan `privileged: true`, mount `docker.sock`, atau `network_mode: host` ditolak dengan pesan yang jelas.
 7. Container demo tidak bisa menjangkau PostgreSQL, Redis, atau port lokal FASINOVA; repo dengan .env ter-commit ditolak oleh gitleaks.
-8. Stop dan Hapus menghentikan container dan menghapus rute di Caddy; subdomain mengembalikan 404.
+8. Stop dan Hapus menghentikan container; Hapus juga membuang database karya dan mengganti rute Caddy dengan jawaban 404 (sertifikat tetap ada); subdomain mengembalikan 404.
 9. Demo yang dimatikan manual di runner terdeteksi health check; tombol "Coba demo" diganti video dalam ≤ 15 menit.
 10. Karya Cyber Security dengan image `bkimminich/juice-shop` tidak bisa di-deploy.
 11. Karya Full Stack contoh memilih MariaDB (lalu PostgreSQL): deploy mengisi `DB_*` otomatis, aplikasi bisa membuat tabel dan menyimpan data; kredensial karya itu tidak bisa membuka database karya lain; redeploy mempertahankan data; **Hapus** menghilangkan database dan user.
