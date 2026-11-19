@@ -137,6 +137,9 @@ class PolicyTest extends TestCase
         $this->assertSame('https://s.fasinova.my.id', $map['ASSET_URL']);        // kosong dianggap tidak diisi
         $this->assertSame('karya-mariadb', $map['DB_HOST']);                      // DB dari FASINOVA menang
         $this->assertSame('X', $map['APP_NAME']);
+        $blank = $D::envMap(collect([$v('CACHE_STORE', ''), $v('APP_TIMEZONE', ''), $v('APP_NAME', 'X')]), [], 'https://s.fasinova.my.id');
+        $this->assertArrayNotHasKey('CACHE_STORE', $blank);                      // kosong tidak menimpa default aplikasi (kasus Trial/dagopark)
+        $this->assertArrayNotHasKey('APP_TIMEZONE', $blank);
         $own = $D::envMap(collect([$v('APP_URL', 'https://domain-sendiri.example')]), [], 'https://s.fasinova.my.id');
         $this->assertSame('https://domain-sendiri.example', $own['APP_URL']);    // pilihan eksplisit mahasiswa dihormati
         $this->assertSame("A=\"1\\\"2\\\$3\"\nB=\"x\"\n", $D::envText(['A' => '1"2$3', 'B' => 'x']));   // kutip dan $ di-escape

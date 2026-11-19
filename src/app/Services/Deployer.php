@@ -439,7 +439,9 @@ class Deployer
     public static function envMap($vars, array $dbEnv, string $publicUrl): array
     {
         $map = [];
-        foreach ($vars as $v) $map[$v->key] = (string) $v->value;
+        // Nilai kosong (mis. CACHE_STORE= dari .env.example yang belum diisi) tidak disuntikkan: variabel kosong MENIMPA nilai bawaan
+        // aplikasi ("Cache store [] is not defined", "Invalid time zone"), sedangkan variabel yang tidak ada memakai default aplikasi.
+        foreach ($vars as $v) if ((string) $v->value !== '') $map[$v->key] = (string) $v->value;
         foreach (['APP_URL', 'ASSET_URL'] as $k) if (! isset($map[$k]) || $map[$k] === '') $map[$k] = $publicUrl;
         return $dbEnv + $map;
     }
