@@ -16,8 +16,8 @@ Menjalankan kode mahasiswa di server yang sama adalah risiko keamanan terbesar p
 | Deploy | **Otomatis oleh worker** begitu PIC memvalidasi checklist (dari commit SHA terkunci); Cyber Security hanya bila PIC menandai service aman; PIC/admin tetap bisa Redeploy/Stop/Hapus | \[Pasti\] |
 | Tempat karya berjalan | Server yang sama, tetapi di Docker rootless user `runner`; FASINOVA di Docker utama | \[Kemungkinan Besar\], wajib dibuktikan lewat PoC minggu 1 |
 | UI pengelolaan | Modul Deploy di panel Filament, meniru konsep Portainer (stack, container, log, env, resource); tanpa fitur console/exec | \[Pasti\] |
-| Domain | Domain milik FASINOVA sendiri (mis. `fasinova.id`, perlu dibeli), DNS di Cloudflare, subdomain `<slug>.<domain>` | \[Pasti\] |
-| Sertifikat | Satu sertifikat wildcard Let's Encrypt via DNS challenge Cloudflare di Caddy | \[Kemungkinan Besar\] |
+| Domain | Domain milik FASINOVA sendiri: **`fasinova.my.id`** (sudah dibeli di Sumopod; DNS dikelola di Sumopod), subdomain `<slug>.<domain>` | \[Pasti\] |
+| Sertifikat | Let's Encrypt **per hostname** lewat ACME HTTP-01 di Caddy (mode `acme`; tanpa token DNS). Mode wildcard via DNS challenge Cloudflare tetap tersedia bila DNS dipindah ke Cloudflare | \[Pasti\], terbukti di server |
 | Cyber Security | Lab rentan tidak pernah di-deploy online (aturan SOP) | \[Pasti\] |
 | Audiens | Calon mahasiswa, orang tua, tim marketing/sales, industri | \[Pasti\] |
 
@@ -131,7 +131,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | PIC-05 | Cyber Security: saat menyetujui, PIC wajib menandai service aman; tanpa tanda ini karya **tidak** di-deploy otomatis dan tombol Deploy terkunci | M |
 | PIC-06 | Terbit otomatis saat disetujui bila formulir persetujuan publikasi ada (jika belum, status Disetujui sampai ada); PIC bisa menarik karya dari etalase atau menerbitkannya manual | M |
 | ADM-01 | Konfigurasi peminatan: prefix repo, file wajib, checklist, field kartu hasil, port default, boleh deploy atau tidak | M |
-| ADM-02 | Pengaturan deploy: rentang port lokal, domain, kuota default per karya, cadangan sumber daya FASINOVA (token Cloudflare hanya di `.env`) | M |
+| ADM-02 | Pengaturan deploy: rentang port lokal, domain, kuota default per karya, cadangan sumber daya FASINOVA (tidak ada token/rahasia di pengaturan) | M |
 | ADM-03 | Impor peserta TA (CSV: NIM, nama, prodi, peminatan, pembimbing), pengguna & peran | M |
 | ADM-04 | Dashboard: paket per status per peminatan, karya terlambat diperbaiki, deploy gagal, pemakaian CPU/RAM runner | S |
 | ADM-05 | Inquiry kolaborasi: status, penanggung jawab, catatan | M |
@@ -215,9 +215,9 @@ Batas CPU/RAM di Docker rootless hanya berlaku bila server memakai cgroup v2 den
 
 ### 6.4 Domain, subdomain, dan Caddy
 
-- **Domain**: domain milik FASINOVA (mis. `fasinova.id` atau `.my.id`), dibeli sendiri, DNS dikelola di Cloudflare (paket gratis cukup) \[Kemungkinan Besar\]. Record: `A @` dan `A *` ke IP publik server.
+- **Domain**: `fasinova.my.id`, dibeli dan DNS-nya dikelola di Sumopod. Record yang dibutuhkan: `A @` (domain utama) dan `A *` (wildcard) ke IP publik server; `A www` bila ingin `www` (lalu `CADDY_WWW=1`). Perubahan DNS di Sumopod menyebar dalam hitungan menit (TTL 300 detik) \[Pasti\].
 - **Subdomain karya**: `<slug>.<domain>`, huruf kecil/angka/tanda hubung, 3–40 karakter, unik; kata cadangan: `www`, `admin`, `api`, `mail`, `panel`, `app`, `sales`. FASINOVA sendiri di `<domain>` dan `www.<domain>`.
-- **Sertifikat**: satu wildcard `*.<domain>` + `<domain>` via DNS challenge Cloudflare di Caddy lewat plugin DNS Cloudflare (token API Cloudflare dengan izin edit DNS untuk zona itu saja, disimpan di `.env`). Satu kebijakan TLS dipakai semua rute; Caddy memperbarui sertifikat otomatis. Akses HTTP dialihkan ke HTTPS (308).
+- **Sertifikat**: mode `CADDY_TLS=acme` (dipakai sekarang): tiap hostname (domain utama dan tiap `<slug>.<domain>`) mendapat sertifikat Let's Encrypt-nya sendiri lewat HTTP-01 saat rutenya didaftarkan; tidak butuh token DNS. Syaratnya port 80/443 terbuka dan record `A *`. Batas Let's Encrypt sekitar 50 sertifikat baru per minggu per domain, cukup untuk ±30–40 demo; karya yang dihapus tidak memakai kuota baru. Rute karya harus berada di **level atas** server Caddy (bukan di dalam subroute) agar sertifikatnya otomatis. Hostname karya yang dihapus tetap dijawab 404 (rute "tombstone") supaya sertifikatnya tetap ada. Mode `cloudflare` (wildcard lewat DNS challenge, butuh `CLOUDFLARE_API_TOKEN` dan DNS di Cloudflare) dan `internal` (CA lokal, untuk uji) tetap tersedia. Akses HTTP dialihkan ke HTTPS (308).
 - **Admin API Caddy**: hanya lewat **unix socket** (`/run/fasinova/caddy-admin.sock`, tanpa port jaringan) yang di-mount ke container `deployer`. Tiap karya = satu rute ber-ID `fz-<id deployment>` di level atas server `fz-server` (supaya Caddy mengelola sertifikat per hostname; `PUT /id/fz-server/routes/0` untuk membuat, `DELETE /id/fz-<id>` untuk menghapus; keduanya idempoten). Websocket (Streamlit) berjalan tanpa pengaturan tambahan. Job `CaddySync` tiap 5 menit memasang ulang rute demo live yang hilang (mis. setelah Caddy restart). Image Caddy dibuild dengan plugin `caddy-dns/cloudflare` (xcaddy); pin versi dan uji ulang tiap upgrade \[Kemungkinan Besar\].
 - Tidak ada panel admin web untuk Caddy; pengelolaan rute lewat modul Deploy FASINOVA. Port 2019 tidak dipakai.
 
@@ -357,7 +357,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    build: ./docker/caddy                     # Caddy + plugin DNS Cloudflare (xcaddy); pin versi yang diuji
+    build: ./docker/caddy                     # Caddy + plugin DNS Cloudflare opsional (xcaddy); pin versi yang diuji
     network_mode: host                        # bisa meneruskan ke 127.0.0.1:<port>
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
@@ -405,7 +405,7 @@ Karena `deployer` memakai image yang sama dan berjalan sebagai UID `runner`, fol
 3. Aktifkan cgroup v2 dan delegasi systemd (`Delegate=cpu cpuset io memory pids`) untuk user `runner`, supaya `mem_limit`/`cpus` berlaku \[Kemungkinan Besar\].
 4. Buat `/home/runner/apps` milik `runner`.
 5. Firewall: masuk 80/443 publik; 22 dan 81 hanya dari IP admin; port 20000–20999 tidak dibuka (terikat ke 127.0.0.1).
-6. Domain: beli domain, arahkan nameserver ke Cloudflare, buat record `A @` dan `A *` ke IP server, buat token API Cloudflare (edit DNS zona itu), lalu isi `CLOUDFLARE_API_TOKEN`; Caddy menerbitkan sertifikat wildcard sendiri. Buat `/run/fasinova` milik user `runner` (mode 0750) untuk socket admin Caddy.
+6. Domain: beli domain, buat record `A @` dan `A *` ke IP server (di penyedia DNS domain itu), set `APP_DOMAIN` dan `CADDY_TLS=acme`; Caddy menerbitkan sertifikat tiap hostname sendiri. Buat `/run/fasinova` milik user `runner` (mode 0750) untuk socket admin Caddy.
 7. Jadwalkan `docker system prune` mingguan untuk kedua daemon; peringatan saat disk > 80%.
 8. Nyalakan server database karya sekali: `DOCKER_HOST=unix:///run/user/<UID runner>/docker.sock KARYA_DB_ROOT_PASSWORD=... docker compose -f docker-compose.runner.yml up -d` (membuat jaringan `fz-db`, container `karya-mariadb` dan `karya-postgres`, dan dua volume data).
 
@@ -459,7 +459,7 @@ Dua risiko paling mahal: runner disalahgunakan oleh kode karya, dan demo online 
 
 **Pertanyaan terbuka**
 
-- [ ] Nama domain FASINOVA yang akan dibeli (mis. `fasinova.id` atau `fasinova.my.id`), siapa pemilik akunnya, dan apakah DNS dikelola di Cloudflare?
+- [ ] Nama domain FASINOVA yang akan dibeli (mis. `fasinova.id` atau `fasinova.my.id`), siapa pemilik akunnya, dan di mana DNS-nya dikelola? (terjawab: `fasinova.my.id`, Sumopod)
 - [ ] Server mana yang dipakai (milik prodi, lab, atau VPS sewa), dengan spesifikasi berapa, dan apakah kernelnya mendukung cgroup v2?
 - [ ] Nama organisasi GitHub prodi; apakah repo boleh di akun pribadi mahasiswa selama publik?
 - [ ] Siapa PIC tiap peminatan?
