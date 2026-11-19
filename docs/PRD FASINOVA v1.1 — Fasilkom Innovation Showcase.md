@@ -19,18 +19,17 @@ Menjalankan kode mahasiswa di server yang sama adalah risiko keamanan terbesar p
 | Domain | Domain milik FASINOVA sendiri: **`fasinova.my.id`** (sudah dibeli di Sumopod; DNS dikelola di Sumopod), subdomain `<slug>.<domain>` | \[Pasti\] |
 | Sertifikat | Let's Encrypt **per hostname** lewat ACME HTTP-01 di Caddy (mode `acme`; tanpa token DNS). Mode wildcard via DNS challenge Cloudflare tetap tersedia bila DNS dipindah ke Cloudflare | \[Pasti\], terbukti di server |
 | Cyber Security | Lab rentan tidak pernah di-deploy online (aturan SOP) | \[Pasti\] |
-| Audiens | Calon mahasiswa, orang tua, tim marketing/sales, industri | \[Pasti\] |
+| Audiens | Calon mahasiswa, orang tua, industri | \[Pasti\] |
 
 Catatan: reverse proxy yang dipakai adalah **Caddy**, menggantikan Nginx Proxy Manager pada rancangan awal.
 
 ## 2. Tujuan, audiens, metrik, dan ruang lingkup
 
-Tujuan v1.1: setiap karya TA layak tampil dikumpulkan dalam satu format seragam, bisa dicoba publik lewat demo online yang aman, dan bisa dibawakan tim marketing tanpa bantuan mahasiswa.
+Tujuan v1.1: setiap karya TA layak tampil dikumpulkan dalam satu format seragam, bisa dicoba publik lewat demo online yang aman.
 
 | Audiens | Yang mereka butuhkan dari FASINOVA |
 | --- | --- |
 | Calon mahasiswa & orang tua | Judul dan masalah dalam bahasa awam, video 2–3 menit, demo yang bisa dicoba |
-| Tim marketing / sales | Mode sales: kalimat siap pakai, skrip demo, video cadangan, kit offline |
 | Industri / mitra | Kartu hasil dengan angka jujur, tim, kontak kolaborasi |
 | Mahasiswa | Satu tempat mengirim paket TA, status pemeriksaan yang jelas |
 | PIC & admin | Checklist SOP per peminatan, tombol deploy, log |
@@ -54,7 +53,7 @@ Target metrik di bawah adalah usulan untuk disahkan prodi \[Menebak\].
 | Pemeriksaan PIC dengan checklist SOP + tenggat 7 hari | Auto-scaling, multi-server runner |
 | Deploy satu klik ke runner + subdomain via Caddy + log; database PostgreSQL atau MariaDB per karya (opsional) | Backup otomatis data database karya; database selain PostgreSQL/MariaDB |
 | Etalase publik, detail karya, form kolaborasi | Pembayaran/lisensi online |
-| Mode sales dan ekspor kit (ZIP materi) | Aplikasi mobile native |
+| — | Aplikasi mobile native; mode sales / ekspor kit materi (dibatalkan) |
 
 ## 3. Peran dan alur karya
 
@@ -70,7 +69,6 @@ Paket yang dikembalikan PIC wajib diperbaiki dalam 7 hari sesuai SOP; lewat teng
 | Pembimbing | Dosen pembimbing TA | Menyetujui paket sebelum masuk ke PIC; menandatangani ETIKA.md (Cyber Security) |
 | PIC peminatan | Dosen yang ditunjuk prodi per peminatan | Memvalidasi checklist SOP, mengembalikan/menyetujui/menolak; mengelola deploy dan menarik karya dari etalase bila perlu |
 | Admin | Unit inovasi / prodi | Konfigurasi peminatan, runner, domain, pengguna, inquiry, semua karya |
-| Sales | Tim marketing | Membuka mode sales, mengunduh kit |
 | Publik | Calon mahasiswa, orang tua, industri | Menjelajah, mencoba demo, mengirim form kolaborasi |
 
 ## 4. Paket karya per peminatan
@@ -136,7 +134,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | ADM-05 | Inquiry kolaborasi: status, penanggung jawab, catatan | M |
 | ADM-06 | Log audit: siapa menyetujui, deploy, mengubah env, kapan | M |
 
-### 5.3 Situs publik dan mode sales
+### 5.3 Situs publik
 
 | ID | Kebutuhan | Prio |
 | --- | --- | --- |
@@ -144,8 +142,6 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | PUB-02 | Detail karya: bentuk karya, masalah & solusi awam, abstrak, HKI, **link jurnal (bila ada)**, video, tombol **"Coba demo"** ke subdomain (bila ter-deploy dan sehat), kartu hasil, tim + pembimbing, poster, form kolaborasi | M |
 | PUB-03 | Tombol "Coba demo" otomatis disembunyikan bila health check gagal, diganti video | M |
 | PUB-04 | Form kolaborasi dengan persetujuan UU PDP, Turnstile, rate limit 3/10 menit per IP | M |
-| SAL-01 | **Mode sales** `/sales` (login tim marketing): daftar karya siap presentasi, kalimat sales, skrip demo, video cadangan, poster | S |
-| SAL-02 | Unduh kit per karya (ZIP: video, poster, kartu hasil, skrip demo, README cara menjalankan offline) | C |
 
 ## 6. Modul Deploy (konsep Portainer) dan subdomain
 
@@ -246,7 +242,7 @@ Tabel utama di PostgreSQL. Konfigurasi peminatan disimpan sebagai data (`jsonb`)
 
 | Tabel | Kolom kunci | Catatan |
 | --- | --- | --- |
-| `users` | name, email, nim (nullable, mahasiswa), kode\_dosen (nullable, dosen/PIC), study\_program\_id | peran via spatie: mahasiswa, pembimbing, pic, admin, sales |
+| `users` | name, email, nim (nullable, mahasiswa), kode\_dosen (nullable, dosen/PIC), study\_program\_id | kolom `role`: mahasiswa, dosen, pic, admin |
 | `tracks` (peminatan) | code (ai, cs, fullstack, iot, llm), name, repo\_prefix, default\_port, deployable, required\_files (jsonb), checklist (jsonb), result\_card\_schema (jsonb), forbidden\_images (jsonb), sop\_url | dikelola admin |
 | `track_pics` | track\_id, user\_id | PIC per peminatan |
 | `innovations` | id (uuid), slug, title, track\_id, study\_program\_id, academic\_period, problem, solution, status, supervisor\_id, supervisor\_approved\_at, revision\_due\_at, published\_at, search\_vector | status: draft, submitted, needs\_revision, approved, rejected, published, archived |
