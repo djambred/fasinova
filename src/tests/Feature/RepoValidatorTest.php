@@ -16,7 +16,7 @@ class RepoValidatorTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function validate(array $paths, string $url = 'https://github.com/djambred/dagopark', ?string $tag = null, bool $tagExists = false, bool $branchExists = true, ?string $commit = null): array
+    private function validate(array $paths, string $url = 'https://github.com/djambred/dagopark', ?string $tag = null, bool $tagExists = false, bool $branchExists = true, ?string $commit = null, ?string $rawBody = null): array
     {
         static $n = 0;
         $n++;
@@ -35,7 +35,7 @@ class RepoValidatorTest extends TestCase
             'api.github.com/repos/djambred/dagopark/git/trees/'.($commit ?: 'zzz').'*' => Http::response(['tree' => collect($paths)->map(fn ($p) => ['path' => $p])->all()]),
             'api.github.com/repos/djambred/dagopark/git/trees/c0ffee*' => Http::response(['tree' => collect($paths)->map(fn ($p) => ['path' => $p])->all()]),
             'api.github.com/repos/djambred/dagopark' => Http::response(['private' => false, 'default_branch' => 'main']),
-            'raw.githubusercontent.com/*' => Http::response("services:\n  web:\n    image: php:8.3\n"),
+            'raw.githubusercontent.com/*' => Http::response($rawBody ?? "services:\n  web:\n    image: php:8.3\n"),
         ]);
         $items = (new RepoValidator)->validate($i->fresh('repository', 'track'));
         return [collect($items)->keyBy('label'), $i->repository->fresh()->validation_report];
@@ -139,5 +139,37 @@ class RepoValidatorTest extends TestCase
         $this->assertSame('https://github.com/o/r.git', $C('https://github.com/o/r.git'));     // dulu menjadi r.git.git
         $this->assertSame('https://github.com/o/r.git', $C('https://github.com/o/r/'));
         $this->assertSame('file:///home/runner/apps/_git/demo.git', $C('file:///home/runner/apps/_git/demo'));
+    }
+
+    public function test_stack_is_detected_from_repo_and_overrides_a_wrong_choice(): void
+    {
+        $base = ['docker-compose.yml', 'README.md', 'src/.env.example'];
+        [$items] = $this->validate([...$base, 'src/artisan', 'src/package.json']);          // Laravel juga punya package.json
+        $i = Innovation::orderByDesc("id")->first();
+        $this->assertSame('laravel', $i->deployment->stack);
+        $this->assertSame(8000, (int) $i->deployment->internal_port);
+        $this->assertTrue($items->keys()->contains(fn ($k) => str_starts_with($k, 'Stack terdeteksi: Laravel')));
+
+        $i->deployment->update(['stack' => 'streamlit', 'internal_port' => 8501]);       // mahasiswa salah pilih (kasus Trial)
+        (new RepoValidator)->validate($i->fresh('repository', 'track'));
+        $this->assertSame('laravel', $i->deployment->fresh()->stack);
+        $this->assertSame(8000, (int) $i->deployment->fresh()->internal_port);
+
+        $i->deployment->update(['internal_port' => 9000]);                              // port yang diubah sengaja tidak ditimpa
+        (new RepoValidator)->validate($i->fresh('repository', 'track'));
+        $this->assertSame(9000, (int) $i->deployment->fresh()->internal_port);
+    }
+
+    public function test_streamlit_and_js_and_unknown_stacks(): void
+    {
+        $base = ['docker-compose.yml', 'README.md', '.env.example'];
+        $this->validate([...$base, 'requirements.txt'], rawBody: "streamlit==1.30\npandas\n");
+        $this->assertSame('streamlit', Innovation::orderByDesc("id")->first()->deployment->stack);
+        $this->validate([...$base, 'requirements.txt'], rawBody: "flask\n");                 // Python tapi bukan Streamlit
+        $this->assertNull(Innovation::orderByDesc("id")->first()->deployment->stack);
+        $this->validate([...$base, 'package.json']);
+        $this->assertSame('js', Innovation::orderByDesc("id")->first()->deployment->stack);
+        $this->validate($base);                                                              // tak yakin: dibiarkan kosong
+        $this->assertNull(Innovation::orderByDesc("id")->first()->deployment->stack);
     }
 }

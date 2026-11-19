@@ -14,6 +14,31 @@ class RepoValidator
         return $req->get('https://api.github.com'.$path);
     }
 
+    /**
+     * Tebak stack dari isi repo (akar atau folder level 1–2): Laravel (artisan), Streamlit (requirements/pyproject menyebut streamlit),
+     * JavaScript (package.json). Urutannya penting: repo Laravel juga punya package.json untuk aset. Null bila tak yakin.
+     */
+    private function detectStack($paths, string $owner, string $name, string $sha): ?string
+    {
+        $find = fn (string $f) => $paths->first(fn ($p) => $p === $f || (bool) preg_match('#^([^/]+/){1,2}'.preg_quote($f, '#').'$#', $p));
+        if ($find('artisan')) return 'laravel';
+        foreach (['requirements.txt', 'pyproject.toml'] as $f) {
+            if (($p = $find($f)) && stripos((string) Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/$p")->body(), 'streamlit') !== false) return 'streamlit';
+        }
+        return $find('package.json') ? 'js' : null;
+    }
+
+    /** Samakan stack karya dengan hasil deteksi (sistem yang menyesuaikan, bukan mahasiswa). Mengembalikan keterangan perubahan. */
+    private function applyStack(Innovation $i, string $stack): string
+    {
+        $d = $i->deployment;
+        if (! $d || $d->stack === $stack) return '';
+        $old = $d->stack;
+        $port = $d->internal_port;
+        $d->update(['stack' => $stack, 'internal_port' => (blank($port) || $port == config("fasinova.stacks.$old.port")) ? config("fasinova.stacks.$stack.port") : $port]);
+        return $old ? 'Stack disesuaikan otomatis dari '.config("fasinova.stacks.$old.label").'.' : 'Stack diisi otomatis.';
+    }
+
     /** Validasi repo + simpan hasilnya. Mengembalikan item per-cek. */
     public function validate(Innovation $i): array
     {
@@ -26,6 +51,7 @@ class RepoValidator
         };
         $sha = null;
         $envExample = null;
+        $stack = null;
         $refType = null;
 
         // Terima apa pun yang wajar ditempel mahasiswa: akhiran .git, garis miring akhir, atau tautan halaman GitHub (/tree/<branch>/<folder>).
@@ -82,6 +108,8 @@ class RepoValidator
                             'detail' => "$committedEnv akan ditimpa otomatis dengan variabel dari FASINOVA; kunci di dalamnya sebaiknya dianggap sudah bocor."];
                     }
                     $envExample = $paths->first(fn ($p) => (bool) preg_match('#^([^/]+/){0,2}\.env\.example$#', $p));
+                    $stack = $this->detectStack($paths, $owner, $name, $sha);
+                    if ($stack) $items[] = ['label' => 'Stack terdeteksi: '.config("fasinova.stacks.$stack.label"), 'ok' => true, 'detail' => $this->applyStack($i, $stack)];
                     $raw = Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/docker-compose.yml");
                     if ($raw->ok()) {
                         try {
@@ -98,7 +126,7 @@ class RepoValidator
             'locked_commit_sha' => $repo->locked_commit_sha, // SHA dikunci saat PIC menyetujui, bukan di sini
         ])->save();
         // SHA terbaru dari tag disimpan di laporan untuk dikunci saat approve
-        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'ref_type' => $refType ?? null, 'env_example' => $envExample ?? null, 'ok' => collect($items)->every('ok')]]);
+        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'ref_type' => $refType ?? null, 'env_example' => $envExample ?? null, 'stack' => $stack ?? null, 'ok' => collect($items)->every('ok')]]);
 
         return $items;
     }

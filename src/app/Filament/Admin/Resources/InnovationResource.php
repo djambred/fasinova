@@ -102,6 +102,7 @@ class InnovationResource extends Resource
                         : (! $record->supervisor_approved_at ? 'Pembimbing belum menyetujui.' : null);
                     if (! $fail) { // validasi ulang agar SHA yang dikunci adalah SHA tag saat ini
                         (new RepoValidator)->validate($record->fresh('repository', 'track'));
+                        $record->unsetRelation('deployment'); // stack bisa disesuaikan oleh validasi
                         $rep = $record->repository->fresh()->validation_report;
                         $fail = empty($rep['ok']) ? 'Validasi repo gagal.' : null;
                     }

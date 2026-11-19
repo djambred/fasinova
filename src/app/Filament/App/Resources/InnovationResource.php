@@ -79,7 +79,7 @@ class InnovationResource extends Resource
                         Select::make('stack')->label('Stack aplikasi')->options(collect(config('fasinova.stacks'))->map(fn ($s) => $s['label'])->all())
                             ->live()
                             ->afterStateUpdated(fn ($state, $set) => $set('internal_port', config("fasinova.stacks.$state.port")))
-                            ->helperText('Mengisi port internal otomatis; bisa Anda ubah.'),
+                            ->helperText('Tidak perlu dipilih: terisi otomatis dari isi repo saat Validasi repo (Laravel / Streamlit / Node). Boleh diubah bila keliru.'),
                         Select::make('db_engine')->label('Database yang disediakan')->placeholder('Tidak pakai database')
                             ->options(\App\Services\DbProvisioner::ENGINES)
                             ->helperText('FASINOVA membuat database + user khusus karya Anda dan mengisi DB_CONNECTION, DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD otomatis saat deploy. Jangan isi variabel DB_* sendiri.'),
