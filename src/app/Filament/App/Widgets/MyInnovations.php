@@ -18,7 +18,7 @@ class MyInnovations extends TableWidget
         return $table->heading('Status karya & langkah berikutnya')->emptyStateHeading('Belum ada karya')->emptyStateDescription('Buat karya dari menu Karya saya.')->query(InnovationResource::getEloquentQuery()->latest('updated_at'))->paginated(false)->columns([
             TextColumn::make('title')->label('Judul')->wrap(),
             TextColumn::make('track.name')->label('Peminatan'),
-            TextColumn::make('status')->badge()->formatStateUsing(fn ($s, $record) => $record->isOverdue() ? 'terlambat' : $s),
+            TextColumn::make('status')->badge()->formatStateUsing(fn ($state, $record) => $record->statusLabel())->color(fn ($state, $record) => $record->statusColor()),
             TextColumn::make('next')->label('Langkah berikutnya')->state(fn ($record) => match (true) {
                 $record->status === 'draft' && ! $record->repository?->validation_report => 'Isi repo, env, materi, lalu validasi repo',
                 $record->status === 'draft' && ! $record->supervisor_approved_at => 'Menunggu persetujuan pembimbing (dosen menyetujui di panelnya)',

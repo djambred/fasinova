@@ -71,6 +71,27 @@ class Innovation extends Model
     public function reviews() { return $this->hasMany(Review::class); }
     public function inquiries() { return $this->hasMany(Inquiry::class); }
 
+    public const STATUS_LABELS = [
+        'draft' => 'Draf', 'submitted' => 'Menunggu PIC', 'needs_revision' => 'Perlu perbaikan', 'approved' => 'Disetujui',
+        'published' => 'Terbit', 'rejected' => 'Ditolak', 'archived' => 'Diarsipkan',
+    ];
+
+    /** Label status untuk tampilan (terlambat bila lewat tenggat perbaikan). */
+    public function statusLabel(): string
+    {
+        return $this->isOverdue() ? 'Terlambat' : (self::STATUS_LABELS[$this->status] ?? $this->status);
+    }
+
+    public function statusColor(): string
+    {
+        return match (true) {
+            $this->isOverdue() => 'danger',
+            default => match ($this->status) {
+                'submitted' => 'warning', 'needs_revision', 'rejected' => 'danger', 'approved' => 'info', 'published' => 'success', default => 'gray',
+            },
+        };
+    }
+
     /** Alur deploy hanya untuk bentuk "web" pada peminatan yang boleh deploy. */
     public function isDeployable(): bool
     {

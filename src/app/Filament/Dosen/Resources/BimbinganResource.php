@@ -46,7 +46,7 @@ class BimbinganResource extends Resource
             TextColumn::make('owner.name')->label('Ketua'),
             TextColumn::make('owner.nim')->label('NIM'),
             TextColumn::make('track.name')->label('Peminatan'),
-            TextColumn::make('status')->badge(),
+            TextColumn::make('status')->badge()->formatStateUsing(fn ($state, Innovation $record) => $record->statusLabel())->color(fn ($state, Innovation $record) => $record->statusColor()),
             IconColumn::make('supervisor_approved_at')->label('Disetujui saya')->boolean()
                 ->state(fn (Innovation $record) => $record->supervisor_id === auth()->id() ? (bool) $record->supervisor_approved_at : null),
         ])->filters([

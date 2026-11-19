@@ -185,7 +185,8 @@ class InnovationResource extends Resource
     {
         return $table->columns([
             TextColumn::make('title')->wrap(), TextColumn::make('track.name')->label('Peminatan'),
-            TextColumn::make('status')->badge()->formatStateUsing(fn ($s, Innovation $record) => $record->isOverdue() ? 'terlambat' : $s),
+            // Filament mengisi status lewat parameter bernama $state; memakai nama lain ($s) membuat badge kosong.
+            TextColumn::make('status')->badge()->formatStateUsing(fn ($state, Innovation $record) => $record->statusLabel())->color(fn ($state, Innovation $record) => $record->statusColor()),
             TextColumn::make('revision_due_at')->label('Tenggat perbaikan')->since()->visible(true),
             TextColumn::make('deployment.url')->label('Demo')->url(fn ($state) => $state, true),
         ])->recordActions([

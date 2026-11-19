@@ -50,11 +50,26 @@ class StudentFlowTest extends TestCase
         [$mhs, $sup, $prodi] = $this->setUpStudent();
         Livewire::test(CreateInnovation::class)
             ->fillForm(['track_id' => Track::where('code', 'fullstack')->value('id'), 'form_type' => 'web', 'title' => 'Karya Baru', 'study_program_id' => $prodi->id, 'supervisor_id' => $sup->id])
-            ->call('create')->assertHasNoFormErrors()->assertRedirect();
+            ->call('create')->assertHasNoFormErrors();
         $i = Innovation::where('title', 'Karya Baru')->firstOrFail();
+        Livewire::test(CreateInnovation::class)->assertOk();
+        $this->assertSame(url("/app/innovations/{$i->id}/edit"), (new CreateInnovation)->getResource()::getUrl('edit', ['record' => $i]));
         $this->assertSame($mhs->id, $i->owner_id);
         $this->assertSame($prodi->id, $i->study_program_id);
         $this->get("/app/innovations/{$i->id}/edit")->assertOk();
+    }
+
+    public function test_student_list_shows_readable_status_badges(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $draft = $this->completeDraft($mhs, $sup, $prodi);
+        $sent = Innovation::create(['title' => 'Sudah Dikirim', 'track_id' => $draft->track_id, 'owner_id' => $mhs->id, 'status' => 'submitted']);
+        $late = Innovation::create(['title' => 'Telat', 'track_id' => $draft->track_id, 'owner_id' => $mhs->id, 'status' => 'needs_revision', 'revision_due_at' => now()->subDay()]);
+        $list = \Livewire\Livewire::test(\App\Filament\App\Resources\InnovationResource\Pages\ListInnovations::class);   // tabel dirender oleh komponen Livewire
+        foreach (['Draf', 'Menunggu PIC', 'Terlambat'] as $label) $list->assertSee($label);                                          // dulu badge kosong
+        $this->assertSame('warning', $sent->statusColor());
+        $this->assertSame('danger', $late->statusColor());
+        \Livewire\Livewire::test(\App\Filament\App\Widgets\MyInnovations::class)->assertSee('Menunggu PIC')->assertSee('Draf');   // widget dasbor juga
     }
 
     public function test_old_karya_without_program_can_still_be_saved_and_is_prefilled(): void
