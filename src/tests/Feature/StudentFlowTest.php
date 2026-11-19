@@ -121,4 +121,47 @@ class StudentFlowTest extends TestCase
             $i->delete();
         }
     }
+
+    private function fakeGithub(): void
+    {
+        \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
+        $tree = ['tree' => collect(['docker-compose.yml', 'README.md', 'src/.env.example'])->map(fn ($p) => ['path' => $p])->all()];
+        \Illuminate\Support\Facades\Http::fake([
+            'api.github.com/repos/org/fs-demo/git/ref/tags/*' => \Illuminate\Support\Facades\Http::response([], 404),
+            'api.github.com/repos/org/fs-demo/git/ref/heads/*' => \Illuminate\Support\Facades\Http::response(['object' => ['sha' => 'beef01', 'type' => 'commit']]),
+            'api.github.com/repos/org/fs-demo/git/trees/beef01*' => \Illuminate\Support\Facades\Http::response($tree),
+            'api.github.com/repos/org/fs-demo' => \Illuminate\Support\Facades\Http::response(['private' => false, 'default_branch' => 'main']),
+            'raw.githubusercontent.com/org/fs-demo/*/.env.example' => \Illuminate\Support\Facades\Http::response("APP_KEY=\nDB_HOST=db\n"),
+            'raw.githubusercontent.com/*' => \Illuminate\Support\Facades\Http::response("services:\n  web:\n    image: x\n"),
+        ]);
+        config(['fasinova.github_org' => 'org']);
+    }
+
+    public function test_validate_repo_button_keeps_fields_filled_and_shows_results(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $i = $this->completeDraft($mhs, $sup, $prodi);
+        $i->repository->update(['url' => 'https://github.com/org/fs-demo.git', 'tag' => 'main', 'validation_report' => null]);
+        $this->fakeGithub();
+
+        $t = Livewire::test(EditInnovation::class, ['record' => $i->id])->callAction('validate');
+        $t->assertFormSet(['repository.url' => 'https://github.com/org/fs-demo', 'repository.tag' => 'main']);   // dulu: kosong setelah validasi
+        $report = $i->repository->fresh()->validation_report;
+        $this->assertTrue($report['ok']);
+        $t->call('save')->assertHasNoFormErrors();                                                                // Simpan sesudahnya tidak menimpa dengan kosong
+        $this->assertSame('https://github.com/org/fs-demo', $i->repository->fresh()->url);
+        $this->assertSame('main', $i->repository->fresh()->tag);
+    }
+
+    public function test_env_example_button_keeps_form_and_adds_keys(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $i = $this->completeDraft($mhs, $sup, $prodi);
+        $i->repository->update(['url' => 'https://github.com/org/fs-demo', 'tag' => 'main', 'owner' => 'org', 'name' => 'fs-demo', 'validation_report' => ['ok' => true, 'env_example' => 'src/.env.example']]);
+        $this->fakeGithub();
+
+        $t = Livewire::test(EditInnovation::class, ['record' => $i->id])->callAction('envExample');
+        $this->assertEqualsCanonicalizing(['APP_KEY', 'DB_HOST'], $i->envVariables()->pluck('key')->all());
+        $t->assertFormSet(['repository.url' => 'https://github.com/org/fs-demo', 'repository.tag' => 'main']);
+    }
 }

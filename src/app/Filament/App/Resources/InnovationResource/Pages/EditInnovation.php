@@ -17,6 +17,17 @@ class EditInnovation extends EditRecord
 {
     protected static string $resource = InnovationResource::class;
 
+    /**
+     * Isi ulang form dari database. Aksi seperti Validasi repo mengubah data lewat instance lain, sehingga model halaman
+     * (dan relasinya: repo, deployment, kartu hasil, env) usang; tanpa penyegaran, kolom tampil kosong/lama dan Simpan berikutnya menimpanya.
+     */
+    private function reloadFromDatabase(): void
+    {
+        $this->record->unsetRelations();
+        $this->record->refresh();
+        $this->fillForm();
+    }
+
     /** Alur deploy hanya untuk bentuk "web" (mengikuti pilihan di form walau belum disimpan). */
     private function isWebForm(): bool
     {
@@ -46,7 +57,7 @@ class EditInnovation extends EditRecord
                 $items = (new RepoValidator)->validate($this->record->fresh('repository', 'track'));
                 $bad = collect($items)->where('ok', false)->count();
                 Notification::make()->title($bad ? "$bad pemeriksaan gagal" : 'Repo lolos semua pemeriksaan')->{$bad ? 'danger' : 'success'}()->send();
-                $this->fillForm();
+                $this->reloadFromDatabase();
             }),
             Action::make('envExample')->label('Ambil kunci dari .env.example')->icon('heroicon-o-arrow-down-tray')->visible(fn () => $this->isWebForm())->action(function () {
                 $r = $this->record->repository;
@@ -56,7 +67,7 @@ class EditInnovation extends EditRecord
                 foreach (array_unique($m[1]) as $key) {
                     EnvVariable::firstOrCreate(['innovation_id' => $this->record->id, 'key' => $key], ['is_secret' => true, 'updated_by' => auth()->id()]);
                 }
-                $this->fillForm();
+                $this->reloadFromDatabase();
                 Notification::make()->title(count($m[1]).' kunci ditambahkan')->success()->send();
             }),
             Action::make('askSupervisor')->label('Minta persetujuan pembimbing')->icon('heroicon-o-bell-alert')
