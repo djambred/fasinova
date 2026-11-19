@@ -172,4 +172,14 @@ class StudentFlowTest extends TestCase
         Livewire::test(EditInnovation::class, ['record' => $i->id])->callAction('submit')->assertOk();   // dulu 500: closure Repeater memakai $d
         $this->assertSame('submitted', $i->fresh()->status);
     }
+
+    public function test_fullstack_card_is_optional_but_ai_card_stays_required(): void
+    {
+        [$mhs, $sup, $prodi] = $this->setUpStudent();
+        $i = $this->completeDraft($mhs, $sup, $prodi);                       // Full Stack, kartu hasil kosong
+        $this->assertSame([false], collect($i->track->result_card_schema)->pluck('required')->unique()->all());
+        Livewire::test(EditInnovation::class, ['record' => $i->id])->callAction('submit');
+        $this->assertSame('submitted', $i->fresh()->status);                 // terkirim tanpa kartu hasil
+        $this->assertSame([true], collect(Track::where('code', 'ai')->first()->result_card_schema)->pluck('required')->unique()->all());
+    }
 }

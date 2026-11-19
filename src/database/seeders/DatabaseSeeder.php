@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $common = ['Repo & tag valid (otomatis; hanya aplikasi web)', 'Abstrak jelas dan tidak berlebihan', 'Gambar poster layak tampil',
             'Video demo / link YouTube (jika ada) sesuai karya', 'Kartu hasil sesuai aturan klaim', 'Persetujuan publikasi (TOS) dicentang', 'Tidak ada data pribadi di data demo'];
-        $card = fn (array $f) => collect($f)->map(fn ($l, $k) => ['key' => $k, 'label' => $l, 'required' => true])->values()->all();
+        $card = fn (array $f, bool $required = true) => collect($f)->map(fn ($l, $k) => ['key' => $k, 'label' => $l, 'required' => $required])->values()->all();
 
         $tracks = [
             ['code' => 'ai', 'name' => 'AI (eksperimen algoritma)', 'repo_prefix' => 'ai-', 'default_port' => 8501, 'deployable' => true,
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'llm', 'name' => 'LLM / Chatbot', 'deployable' => false, 'checklist' => $common],
         ];
         foreach ($tracks as $t) {
-            Track::updateOrCreate(['code' => $t['code']], $t + ['result_card_schema' => $t['result_card_schema'] ?? $card(['masalah_solusi' => 'Masalah & solusi', 'keterbatasan' => 'Keterbatasan', 'kalimat_sales' => 'Kalimat untuk sales'])]);
+            Track::updateOrCreate(['code' => $t['code']], $t + ['result_card_schema' => $t['result_card_schema'] ?? $card(['masalah_solusi' => 'Masalah & solusi', 'keterbatasan' => 'Keterbatasan'], false)]);
         }
 
         User::firstOrCreate(['email' => 'admin@fasinova.test'], ['name' => 'Admin', 'password' => 'password', 'role' => 'admin']);
