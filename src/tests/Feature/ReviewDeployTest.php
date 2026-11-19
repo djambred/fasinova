@@ -122,6 +122,29 @@ class ReviewDeployTest extends TestCase
         $this->assertSame('demo-ai', $i->deployment->fresh()->subdomain);
     }
 
+    public function test_repo_without_tag_uses_default_branch_and_locks_its_sha(): void
+    {
+        $i = $this->setUpInnovation();
+        $i->repository->update(['tag' => null]);
+        $i->deployment->update(['stack' => 'streamlit', 'subdomain' => 'demo-ai']);
+        $paths = collect($i->track->required_files)->map(fn ($p) => ['path' => $p])->all();
+        Http::swap(new \Illuminate\Http\Client\Factory()); // buang stub fixture (stub pertama yang cocok menang)
+        Http::fake([
+            'api.github.com/repos/org/ai-demo/git/ref/heads/trunk' => Http::response(['object' => ['sha' => 'branchsha1', 'type' => 'commit']]),
+            'api.github.com/repos/org/ai-demo/git/trees/branchsha1*' => Http::response(['tree' => $paths]),
+            'api.github.com/repos/org/ai-demo' => Http::response(['private' => false, 'default_branch' => 'trunk']),
+            'raw.githubusercontent.com/*' => Http::response("services:\n  web:\n    image: python:3.12\n"),
+        ]);
+        Queue::fake();
+        Livewire::test(ListInnovations::class)->callTableAction('review', $i, $this->ok($i, 'approve'));
+        $i->refresh();
+        $this->assertSame('published', $i->status);
+        $this->assertSame('branchsha1', $i->repository->locked_commit_sha);        // SHA branch default terkunci
+        $items = collect($i->repository->validation_report['items'] ?? []);
+        $this->assertTrue($items->contains(fn ($x) => str_contains($x['label'], 'Branch default (trunk)')));
+        Queue::assertPushed(RunnerJob::class, fn ($j) => $j->action === 'deploy');
+    }
+
     public function test_return_sets_seven_day_deadline(): void
     {
         $i = $this->setUpInnovation();

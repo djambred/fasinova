@@ -36,8 +36,16 @@ class RepoValidator
 
             $r = $this->gh("/repos/$owner/$name");
             if ($add('Repo ditemukan & publik', $r->ok() && ! $r->json('private'), $r->ok() ? ($r->json('private') ? 'Repo privat ditolak' : '') : 'Repo tidak ditemukan atau privat')) {
-                $ref = $this->gh("/repos/$owner/$name/git/ref/tags/".rawurlencode($repo->tag));
-                if ($add("Tag {$repo->tag} ada", $ref->ok())) {
+                $tag = trim((string) $repo->tag);
+                if ($tag !== '') {
+                    $ref = $this->gh("/repos/$owner/$name/git/ref/tags/".rawurlencode($tag));
+                    $found = $add("Tag $tag ada", $ref->ok());
+                } else { // tag opsional: pakai branch default; SHA terkini dikunci saat PIC menyetujui
+                    $branch = $r->json('default_branch') ?: 'main';
+                    $ref = $this->gh("/repos/$owner/$name/git/ref/heads/".rawurlencode($branch));
+                    $found = $add("Branch default ($branch) ada (tanpa tag)", $ref->ok());
+                }
+                if ($found) {
                     $sha = $ref->json('object.sha');
                     if ($ref->json('object.type') === 'tag') {
                         $sha = $this->gh("/repos/$owner/$name/git/tags/$sha")->json('object.sha');
@@ -46,7 +54,7 @@ class RepoValidator
                     $paths = collect($tree->json('tree', []))->pluck('path');
                     foreach ($track->required_files ?? [] as $req) {
                         $alts = explode('|', $req);
-                        $add("File wajib: $req", collect($alts)->contains(fn ($a) => $paths->contains($a)), 'Tidak ditemukan di tag');
+                        $add("File wajib: $req", collect($alts)->contains(fn ($a) => $paths->contains($a)), 'Tidak ditemukan pada versi yang dipakai');
                     }
                     $raw = Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/docker-compose.yml");
                     if ($raw->ok()) {

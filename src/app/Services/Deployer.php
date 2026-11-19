@@ -32,7 +32,7 @@ class Deployer
             $dir = $this->d->dir();
 
             $this->step('cloning');
-            $this->assertTagUnchanged($repo->url, $repo->tag, $sha);
+            if (filled($repo->tag)) $this->assertTagUnchanged($repo->url, $repo->tag, $sha); // tanpa tag: SHA terkunci sudah cukup menjaga integritas
             File::deleteDirectory($dir);
             File::ensureDirectoryExists(dirname($dir));
             $this->run(['git', 'clone', '--quiet', $repo->url.'.git', $dir], null, 'cloning', 300);

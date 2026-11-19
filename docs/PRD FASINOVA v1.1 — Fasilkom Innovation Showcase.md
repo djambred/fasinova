@@ -11,7 +11,7 @@ Menjalankan kode mahasiswa di server yang sama adalah risiko keamanan terbesar p
 | Keputusan | Pilihan v1.1 | Keyakinan |
 | --- | --- | --- |
 | Siapa mengirim karya | Mahasiswa, login email + kata sandi (akun dibuat admin dari daftar peserta TA; SSO dibatalkan); pembimbing menyetujui | \[Pasti\] (sesuai SOP) |
-| Repo | Wajib **publik**, di organisasi GitHub prodi, tag `v1.0-showcase`; repo privat ditolak | \[Pasti\] |
+| Repo | Wajib **publik**, di organisasi GitHub prodi; **tag opsional** (mis. `v1.0-showcase`; bila kosong dipakai branch default); repo privat ditolak | \[Pasti\] |
 | Pemeriksa | PIC per peminatan, **hanya memvalidasi checklist SOP**; perbaikan maksimal 7 hari | \[Pasti\] (sesuai SOP) |
 | Deploy | **Otomatis oleh worker** begitu PIC memvalidasi checklist (dari commit SHA terkunci); Cyber Security hanya bila PIC menandai service aman; PIC/admin tetap bisa Redeploy/Stop/Hapus | \[Pasti\] |
 | Tempat karya berjalan | Server yang sama, tetapi di Docker rootless user `runner`; FASINOVA di Docker utama | \[Kemungkinan Besar\], wajib dibuktikan lewat PoC minggu 1 |
@@ -50,7 +50,7 @@ Target metrik di bawah adalah usulan untuk disahkan prodi \[Menebak\].
 | --- | --- |
 | Login mahasiswa, dosen pembimbing, PIC, admin | Proposal hibah, review riset |
 | Form paket per peminatan (AI, Cyber Security, Full Stack, Robotik/IoT, LLM/Chatbot) | CI/CD otomatis tiap push ke repo |
-| Validasi repo via GitHub API (tag, file wajib) | Deploy dari repo privat atau di luar organisasi prodi |
+| Validasi repo via GitHub API (tag bila diisi, file wajib) | Deploy dari repo privat atau di luar organisasi prodi |
 | Pemeriksaan PIC dengan checklist SOP + tenggat 7 hari | Auto-scaling, multi-server runner |
 | Deploy satu klik ke runner + subdomain via Caddy + log; database PostgreSQL atau MariaDB per karya (opsional) | Backup otomatis data database karya; database selain PostgreSQL/MariaDB |
 | Etalase publik, detail karya, form kolaborasi | Pembayaran/lisensi online |
@@ -112,7 +112,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | --- | --- | --- |
 | MHS-01 | Login tunggal `/masuk` dengan email + kata sandi (tanpa SSO); akun mahasiswa diimpor admin dari daftar peserta TA (NIM), kata sandi diatur lewat "Lupa kata sandi"; setelah login diarahkan ke panel sesuai peran | M |
 | MHS-02 | Buat karya: pilih peminatan, **bentuk karya**, judul, dosen pembimbing; lalu isi sisanya dalam **wizard bertahap** (bentuk karya → stack & database → repo GitHub → env → subdomain → pembimbing & tim → abstrak, HKI & link jurnal → poster, video, berkas → kartu hasil → **persetujuan publikasi**); langkah stack sampai subdomain hanya muncul untuk bentuk Aplikasi web pada peminatan yang boleh deploy. Tombol Simpan tidak mewajibkan kelengkapan; kelengkapan dicek saat Kirim | M |
-| MHS-03 | Isi **tautan repo GitHub** (`https://github.com/<org-prodi>/<prefix>-…`) dan **tag** (default `v1.0-showcase`). Sistem memvalidasi: repo publik (repo privat ditolak), ada di organisasi prodi, tag ada, nama sesuai format, file wajib ada, `docker-compose.yml` lolos kebijakan (bagian 6). Hasil validasi tampil per item | M |
+| MHS-03 | Isi **tautan repo GitHub** (`https://github.com/<org-prodi>/<prefix>-…`) dan **tag (opsional)**. Bila tag kosong, sistem memakai branch default dan versi (commit) terkininya dikunci saat PIC menyetujui. Sistem memvalidasi: repo publik (repo privat ditolak), ada di organisasi prodi, tag ada (bila diisi) atau branch default ada, nama sesuai format, file wajib ada, `docker-compose.yml` lolos kebijakan (bagian 6). Hasil validasi tampil per item | M |
 | MHS-04 | **Editor env**: daftar pasangan KEY=VALUE, tombol "ambil dari `.env.example`" untuk mengisi kunci otomatis, tanda rahasia per kunci; nilai rahasia disamarkan setelah disimpan dan tidak pernah ditampilkan ulang | M |
 | MHS-05 | Pilih **stack** (JavaScript/Node, Laravel, Python Streamlit; mengisi port internal awal otomatis) dan isi metadata deploy: service yang ditampilkan publik, port internal, path health check (default `/`), **subdomain demo** (dipilih mahasiswa: 3–40 karakter, unik, bukan kata cadangan atau terlarang) dan **database yang disediakan** (tidak ada / PostgreSQL / MariaDB, bagian 6.6) | M |
 | MHS-06 | Isi abstrak, HKI (opsional), link jurnal (opsional), unggah gambar poster, tautan YouTube (opsional), dan isi kartu hasil terstruktur | M |
@@ -126,7 +126,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | --- | --- | --- |
 | PIC-01 | Antrean pemeriksaan per peminatan; PIC hanya melihat peminatannya | M |
 | PIC-02 | Checklist SOP per peminatan; tiap item Lulus / Perbaiki + catatan; hasil validasi otomatis ditampilkan di samping | M |
-| PIC-03 | Aksi: Setujui (mengunci commit SHA dari tag saat itu, **lalu karya terbit dan di-deploy otomatis**), Kembalikan (tenggat 7 hari otomatis), Tolak | M |
+| PIC-03 | Aksi: Setujui (mengunci commit SHA dari tag, atau dari branch default bila tanpa tag, saat itu, **lalu karya terbit dan di-deploy otomatis**), Kembalikan (tenggat 7 hari otomatis), Tolak | M |
 | PIC-04 | **Deploy**: tombol Redeploy / Stop / Start / Hapus per karya (deploy pertama otomatis setelah PIC menyetujui); subdomain dipilih mahasiswa, PIC bisa mengubah lewat Redeploy; lihat log build dan log container secara langsung | M |
 | PIC-05 | Cyber Security: saat menyetujui, PIC wajib menandai service aman; tanpa tanda ini karya **tidak** di-deploy otomatis dan tombol Deploy terkunci | M |
 | PIC-06 | Terbit otomatis saat disetujui bila formulir persetujuan publikasi ada (jika belum, status Disetujui sampai ada); PIC bisa menarik karya dari etalase atau menerbitkannya manual | M |
@@ -422,7 +422,7 @@ Keamanan runner adalah kebutuhan nomor satu; kecepatan halaman publik nomor dua.
 | Database karya | Server DB karya hanya di Docker rootless `runner`; satu database + user per karya; tanpa port ke host; kredensial terenkripsi dan tidak di log | Uji: user karya A ditolak ke database karya B dan ke `postgres`/`mysql`; container di luar `fz-db` tidak me-resolve `karya-*` |
 | Egress | Demo tidak bisa menjangkau PostgreSQL, Redis, atau port lokal FASINOVA; koneksi keluar ke internet dipantau, belum diblokir di v1.1 | Uji: `curl https://example.com` dari container demo gagal |
 | Rahasia | Env terenkripsi saat disimpan; tidak muncul di log deploy, log aplikasi, atau respons API | Uji: string env uji tidak ditemukan di log |
-| Integritas | Deploy hanya dari commit SHA terkunci | Uji: tag dipindah → deploy dibatalkan |
+| Integritas | Deploy hanya dari commit SHA terkunci | Uji: tag dipindah → deploy dibatalkan; tanpa tag, deploy tetap memakai SHA yang dikunci saat persetujuan |
 | Otorisasi | Mahasiswa hanya melihat karyanya; PIC hanya peminatannya; deploy hanya PIC/admin | Policy + test Pest per peran |
 | Ketersediaan demo | Health check tiap 5 menit; demo mati otomatis disembunyikan | Tombol "Coba demo" hilang ≤ 15 menit setelah demo mati |
 | Kinerja publik | LCP < 2,5 s di 4G untuk beranda dan detail | Lighthouse mobile Performance ≥ 80 \[Menebak\] |
