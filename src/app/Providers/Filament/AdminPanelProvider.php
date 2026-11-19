@@ -23,7 +23,7 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
-            ->brandName('FASINOVA · PIC & Admin')
+            ->favicon(asset('icon.svg'))->brandName('FASINOVA · PIC & Admin')
             ->colors(['primary' => Color::hex('#1AA5BA')])->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make('Pemeriksaan'), NavigationGroup::make('Deploy'),

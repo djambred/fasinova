@@ -31,7 +31,7 @@ class BimbinganResource extends Resource
         $u = auth()->user();
         $programs = $u->scopeProgramIds();
         return parent::getEloquentQuery()->with('track', 'owner')->where(fn ($q) => $q->where('supervisor_id', $u->id)
-            ->when($programs, fn ($q) => $q->orWhereHas('owner', fn ($o) => $o->whereIn('study_program_id', $programs))));
+            ->when($programs, fn ($q) => $q->orWhereIn('study_program_id', $programs)));
     }
 
     // Tampilan khusus baca; model sama dengan panel lain, jadi create/edit/hapus dikunci di sini.

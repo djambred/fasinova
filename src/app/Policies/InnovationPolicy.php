@@ -8,7 +8,7 @@ use App\Models\User;
 /**
  * Aturan akses karya (PRD §3, §9 Otorisasi):
  * mahasiswa hanya karyanya; PIC hanya peminatannya; deploy/terbit hanya PIC/admin;
- * dosen melihat bimbingan, kaprodi/dekan melihat lingkupnya (hanya lihat).
+ * dosen pembimbing, kaprodi, dan dekan juga PIC untuk bimbingan/lingkupnya.
  */
 class InnovationPolicy
 {
@@ -53,12 +53,12 @@ class InnovationPolicy
     public function publish(User $u, Innovation $i): bool { return $this->manage($u, $i); }
 
     private function manage(User $u, Innovation $i): bool { return $u->isAdmin() || $this->isPicOf($u, $i); }
-    private function isPicOf(User $u, Innovation $i): bool { return $u->isPic() && in_array($i->track_id, $u->picTrackIds()); }
+    private function isPicOf(User $u, Innovation $i): bool { return $u->isPic() && Innovation::whereKey($i->getKey())->managedBy($u)->exists(); }
     private function isSupervisor(User $u, Innovation $i): bool { return $u->role === 'dosen' && $i->supervisor_id === $u->id; }
     private function isTeam(User $u, Innovation $i): bool { return $i->isMember($u); }
 
     private function inLeadershipScope(User $u, Innovation $i): bool
     {
-        return $u->role === 'dosen' && $i->owner?->study_program_id && in_array($i->owner->study_program_id, $u->scopeProgramIds());
+        return $u->role === 'dosen' && $i->study_program_id && in_array($i->study_program_id, $u->scopeProgramIds());
     }
 }

@@ -36,7 +36,7 @@ class DeploymentResource extends Resource
     {
         $q = parent::getEloquentQuery()->with('innovation.track');
         $u = auth()->user();
-        return $u->isAdmin() ? $q : $q->whereHas('innovation', fn ($i) => $i->whereIn('track_id', $u->picTrackIds()));
+        return $q->whereHas('innovation', fn ($i) => $i->managedBy($u));
     }
 
 

@@ -17,7 +17,7 @@ class OverviewStats extends StatsOverviewWidget
     protected function getStats(): array
     {
         $u = auth()->user();
-        $scope = fn ($q) => $u->isAdmin() ? $q : $q->whereIn('track_id', $u->picTrackIds());
+        $scope = fn ($q) => $q->managedBy($u);
         $inn = fn () => $scope(Innovation::query());
 
         $stats = [

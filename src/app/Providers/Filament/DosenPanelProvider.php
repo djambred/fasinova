@@ -23,8 +23,9 @@ class DosenPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel->id('dosen')->path('dosen')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
-            ->brandName('FASINOVA · Dosen')
+            ->favicon(asset('icon.svg'))->brandName('FASINOVA · Dosen')
             ->colors(['primary' => Color::hex('#1AA5BA')])->sidebarCollapsibleOnDesktop()
+            ->userMenuItems([\Filament\Navigation\MenuItem::make()->label('Panel PIC (pemeriksaan)')->url('/admin')->icon('heroicon-o-clipboard-document-check')])
             ->pages([Dashboard::class])
             ->widgets([\App\Filament\Dosen\Widgets\DosenStats::class])
             ->discoverResources(in: app_path('Filament/Dosen/Resources'), for: 'App\\Filament\\Dosen\\Resources')

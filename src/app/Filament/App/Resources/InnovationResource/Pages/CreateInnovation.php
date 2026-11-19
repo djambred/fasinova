@@ -11,6 +11,6 @@ class CreateInnovation extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return $data + ['owner_id' => auth()->id(), 'study_program' => auth()->user()->study_program];
+        return $data + ['owner_id' => auth()->id()];
     }
 }

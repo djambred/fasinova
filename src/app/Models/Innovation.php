@@ -23,6 +23,9 @@ class Innovation extends Model
 
     protected static function booted(): void
     {
+        // Teks prodi (etalase publik) selalu ikut prodi terpilih.
+        static::saving(fn (self $i) => $i->study_program_id && $i->study_program = StudyProgram::find($i->study_program_id)?->name);
+
         static::creating(function (self $i) {
             $i->slug ??= Str::slug($i->title);
             $base = $i->slug;
@@ -44,6 +47,19 @@ class Innovation extends Model
 
     public function track() { return $this->belongsTo(Track::class); }
     public function owner() { return $this->belongsTo(User::class, 'owner_id'); }
+    /** Lingkup PIC: peminatan yang dipegang; dosen juga PIC bimbingannya + prodi/fakultas yang dipimpin (kaprodi/dekan). Admin: semua. */
+    public function scopeManagedBy($q, User $u)
+    {
+        if ($u->isAdmin()) return $q;
+        return $q->where(function ($w) use ($u) {
+            $w->whereIn('track_id', $u->picTrackIds());
+            if ($u->role === 'dosen') {
+                $w->orWhere('supervisor_id', $u->id)
+                    ->orWhereIn('study_program_id', $u->scopeProgramIds());
+            }
+        });
+    }
+
     public function supervisor() { return $this->belongsTo(User::class, 'supervisor_id'); }
     public function repository() { return $this->hasOne(Repository::class); }
     public function envVariables() { return $this->hasMany(EnvVariable::class); }

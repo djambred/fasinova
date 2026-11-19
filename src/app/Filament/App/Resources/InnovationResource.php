@@ -62,6 +62,8 @@ class InnovationResource extends Resource
                 Select::make('form_type')->label('Bentuk karya')->options($formTypes)->required()
                     ->helperText('Alur deploy otomatis saat ini baru tersedia untuk "Aplikasi web". Bentuk lain diisi tanpa deploy.'),
                 TextInput::make('title')->label('Judul karya')->required()->maxLength(120),
+                Select::make('study_program_id')->label('Program studi')->options(\App\Models\StudyProgram::pluck('name', 'id'))->default(fn () => auth()->user()->study_program_id)
+                    ->searchable()->required()->helperText('Kaprodi prodi ini dan dosen pembimbing menjadi PIC karya Anda.'),
                 Select::make('supervisor_id')->label('Dosen pembimbing')->options(User::where('role', 'dosen')->pluck('name', 'id'))->searchable()->required(),
             ])->columns(2),
 
@@ -129,6 +131,8 @@ class InnovationResource extends Resource
                 ]),
 
                 Step::make('Pembimbing & tim')->schema([
+                    Select::make('study_program_id')->label('Program studi')->options(\App\Models\StudyProgram::pluck('name', 'id'))->searchable()->required()
+                        ->helperText('Kaprodi prodi ini dan dosen pembimbing menjadi PIC karya Anda.'),
                     Select::make('supervisor_id')->label('Dosen pembimbing')->options(User::where('role', 'dosen')->pluck('name', 'id'))->searchable()->required(),
                     TextInput::make('academic_period')->label('Periode TA (mis. 2026/2027)'),
                     Repeater::make('members')->label('Anggota tim (selain ketua)')->schema([

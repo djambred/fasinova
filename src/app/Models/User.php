@@ -23,7 +23,7 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return match ($panel->getId()) {
-            'admin' => in_array($this->role, ['pic', 'admin']),
+            'admin' => in_array($this->role, ['pic', 'dosen', 'admin']), // dosen = PIC bimbingan/lingkupnya
             'app' => in_array($this->role, ['mahasiswa', 'admin']),
             'dosen' => in_array($this->role, ['dosen', 'admin']),
             default => false,
@@ -68,7 +68,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     public function isAdmin(): bool { return $this->role === 'admin'; }
-    public function isPic(): bool { return $this->role === 'pic'; }
+    public function isPic(): bool { return in_array($this->role, ['pic', 'dosen']); }
 
     public function tracksAsPic() { return $this->belongsToMany(Track::class, 'track_pics'); }
 

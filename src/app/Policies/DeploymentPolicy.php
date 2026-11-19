@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Deployment;
+use App\Models\Innovation;
 use App\Models\User;
 
 /** Deploy hanya PIC peminatan terkait atau admin; tidak ada pembuatan stack manual (PRD §6.1). */
@@ -16,6 +17,6 @@ class DeploymentPolicy
 
     private function scoped(User $u, Deployment $d): bool
     {
-        return $u->isAdmin() || ($u->isPic() && in_array($d->innovation->track_id, $u->picTrackIds()));
+        return $u->isAdmin() || ($u->isPic() && Innovation::whereKey($d->innovation_id)->managedBy($u)->exists());
     }
 }

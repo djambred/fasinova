@@ -1,5 +1,7 @@
 @extends('site.layout')
 @section('title', $i->title.' — FASINOVA')
+@section('description', \Illuminate\Support\Str::limit(strip_tags($i->abstract ?: $i->problem), 160))
+@section('image', ! empty(($i->materials ?? [])['poster']) ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($i->materials['poster'])) : url('/og-image.png'))
 @section('content')
 @php
     $m = $i->materials ?? [];

@@ -43,7 +43,7 @@ class InnovationResource extends Resource
     {
         $q = parent::getEloquentQuery()->with('track', 'owner', 'deployment', 'repository', 'resultCard');
         $u = auth()->user();
-        return $u->isAdmin() ? $q : $q->whereIn('track_id', $u->picTrackIds());
+        return $q->managedBy($u);
     }
 
     public static function canCreate(): bool { return false; }

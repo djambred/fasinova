@@ -40,6 +40,8 @@ class Notify
     public static function pics(Innovation $i): Collection
     {
         $pics = $i->track->pics()->get();
+        $prodi = \App\Models\StudyProgram::with('faculty')->find($i->study_program_id);
+        $pics = $pics->merge(User::whereIn('id', array_filter([$i->supervisor_id, $prodi?->head_id, $prodi?->faculty?->dean_id]))->get())->unique('id');
         return $pics->isNotEmpty() ? $pics : User::where('role', 'admin')->get();
     }
 
@@ -49,7 +51,7 @@ class Notify
     {
         return match ($u->role) {
             'mahasiswa' => in_array($i->status, ['draft', 'needs_revision']) ? "/app/innovations/{$i->id}/edit" : '/app/innovations',
-            'dosen' => '/dosen/bimbingan',
+            'dosen' => '/admin/innovations',
             default => '/admin/innovations',
         };
     }
