@@ -25,7 +25,7 @@ class User extends Authenticatable implements FilamentUser
         return match ($panel->getId()) {
             'admin' => in_array($this->role, ['pic', 'dosen', 'admin']), // dosen = PIC bimbingan/lingkupnya
             'app' => in_array($this->role, ['mahasiswa', 'admin']),
-            'dosen' => in_array($this->role, ['dosen', 'admin']),
+            'dosen' => in_array($this->role, ['dosen', 'pic', 'admin']),   // PIC adalah dosen: tetap punya dasbor dosen
             default => false,
         };
     }

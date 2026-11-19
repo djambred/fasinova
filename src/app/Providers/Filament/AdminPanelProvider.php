@@ -22,7 +22,13 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
+        return $panel->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()
+            ->userMenuItems([
+                \Filament\Navigation\MenuItem::make('dosen')->label('Dasbor Dosen')->url('/dosen')->icon('heroicon-o-academic-cap')
+                    ->visible(fn () => in_array(auth()->user()?->role, ['dosen', 'pic', 'admin'])),
+                \Filament\Navigation\MenuItem::make('mahasiswa')->label('Panel Mahasiswa')->url('/app')->icon('heroicon-o-rocket-launch')
+                    ->visible(fn () => auth()->user()?->isAdmin()),
+            ])->databaseNotifications()->databaseNotificationsPolling('30s')
             ->favicon(asset('icon.svg'))->brandName('FASINOVA · PIC & Admin')
             ->colors(['primary' => Color::hex('#1AA5BA')])->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
