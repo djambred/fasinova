@@ -34,6 +34,7 @@ class Deployer
 
             $this->step('cloning');
             if (filled($repo->tag)) $this->assertTagUnchanged($repo->url, $repo->tag, $sha); // tanpa tag: SHA terkunci sudah cukup menjaga integritas
+            $this->downQuietly('cloning', 'stack lama dihentikan sebelum deploy ulang'); // jangan hapus folder di bawah container yang masih jalan
             $this->removeDir($dir);
             File::ensureDirectoryExists(dirname($dir));
             $this->run(['git', 'clone', '--quiet', $repo->url.'.git', $dir], null, 'cloning', 300);
@@ -286,26 +287,26 @@ class Deployer
     private function removeDir(string $dir): void
     {
         if (! is_dir($dir)) return;
-        File::deleteDirectory($dir);
+        try { File::deleteDirectory($dir); } catch (\Throwable) {}   // folder milik sub-uid (mode 700) melempar galat; lanjut ke jalur container
         if (is_dir($dir)) {
             $p = new Process(['docker', 'run', '--rm', '--user', '0', '--entrypoint', 'sh', '-v', "$dir:/d", config('fasinova.probe_image'),
                 '-c', 'rm -rf /d/* /d/.[!.]* /d/..?* 2>/dev/null; true']);
             $p->setTimeout(300)->run();
-            File::deleteDirectory($dir);
+            try { File::deleteDirectory($dir); } catch (\Throwable) {}
         }
         if (is_dir($dir)) throw new \RuntimeException("Folder $dir tidak bisa dihapus.");
     }
 
     /** Hentikan dan buang container stack (tanpa -v) setelah deploy gagal; galat diabaikan agar tidak menutupi penyebab asli. */
-    private function downQuietly(): void
+    private function downQuietly(string $step = 'failed', string $msg = 'container dihentikan karena deploy gagal'): void
     {
         try {
             if (File::exists($this->d->dir().'/fasinova.compose.json')) {
-                $this->run($this->compose('down', '--remove-orphans'), $this->d->dir(), 'failed', 180);
-                $this->log('failed', 'out', 'container dihentikan karena deploy gagal');
+                $this->run($this->compose('down', '--remove-orphans'), $this->d->dir(), $step, 180);
+                $this->log($step, 'out', $msg);
             }
         } catch (\Throwable $e) {
-            $this->log('failed', 'err', 'gagal menghentikan container: '.$this->mask($e->getMessage()));
+            $this->log($step, 'err', 'gagal menghentikan container: '.$this->mask($e->getMessage()));
         }
     }
 
