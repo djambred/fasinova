@@ -1,0 +1,49 @@
+#!/bin/sh
+# Batasi jaringan container karya (Docker rootless milik user `runner`).
+# Koneksi keluar container dibuat oleh proses runner (rootlesskit) di jaringan host, jadi bisa dicocokkan dengan uid pemilik.
+# Container tidak boleh menjangkau: host sendiri (kecuali 80/443), jaringan privat termasuk bridge Docker utama (DB/Redis FASINOVA),
+# dan metadata cloud. Internet publik, DNS, dan jaringan antar-container di daemon rootless tidak terpengaruh.
+# Pakai: fasinova-runner-firewall start|stop|status      Opsi: /etc/default/fasinova-runner-firewall (EXTRA_HOST_IPS="ip publik host")
+set -eu
+[ -f /etc/default/fasinova-runner-firewall ] && . /etc/default/fasinova-runner-firewall
+EXTRA_HOST_IPS="${EXTRA_HOST_IPS:-}"
+RUNNER_UID=$(id -u runner)
+CHAIN=FZ-RUNNER
+
+drop_jump() {
+  while iptables -D OUTPUT -m owner --uid-owner "$RUNNER_UID" -j "$CHAIN" 2>/dev/null; do :; done
+  if command -v ip6tables >/dev/null; then
+    while ip6tables -D OUTPUT -m owner --uid-owner "$RUNNER_UID" -j "$CHAIN" 2>/dev/null; do :; done
+  fi
+}
+
+case "${1:-start}" in
+  stop)
+    drop_jump
+    iptables -F "$CHAIN" 2>/dev/null || true; iptables -X "$CHAIN" 2>/dev/null || true
+    if command -v ip6tables >/dev/null; then ip6tables -F "$CHAIN" 2>/dev/null || true; ip6tables -X "$CHAIN" 2>/dev/null || true; fi
+    echo "aturan firewall runner dihapus" ;;
+  status)
+    iptables -S "$CHAIN" 2>&1
+    iptables -S OUTPUT | grep -- "$CHAIN" || echo "(lompatan OUTPUT belum terpasang)" ;;
+  start)
+    iptables -N "$CHAIN" 2>/dev/null || iptables -F "$CHAIN"
+    LOCALIPS=$(ip -4 -o addr show | awk '{print $4}' | cut -d/ -f1 | grep -v '^127\.' || true)
+    HOSTIPS="$LOCALIPS $EXTRA_HOST_IPS"
+    # 1) Caddy (80/443) di alamat host tetap boleh dijangkau (karya memanggil domainnya sendiri)
+    for ip in $HOSTIPS; do iptables -A "$CHAIN" -d "$ip" -p tcp -m multiport --dports 80,443 -j RETURN; done
+    # 2) semua port lain di alamat host (SSH, dll.) ditolak
+    for ip in $HOSTIPS; do iptables -A "$CHAIN" -d "$ip" -j REJECT; done
+    # 3) jaringan privat (bridge Docker utama 172.16/12, LAN/VPC), CGNAT, dan metadata cloud
+    for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16; do iptables -A "$CHAIN" -d "$net" -j REJECT; done
+    # lompatan dipasang TERAKHIR, setelah semua aturan di chain siap
+    drop_jump
+    iptables -I OUTPUT 1 -m owner --uid-owner "$RUNNER_UID" -j "$CHAIN"
+    if command -v ip6tables >/dev/null; then   # IPv6: jaringan lokal/unik-lokal
+      ip6tables -N "$CHAIN" 2>/dev/null || ip6tables -F "$CHAIN"
+      for net in fc00::/7 fe80::/10; do ip6tables -A "$CHAIN" -d "$net" -j REJECT; done
+      ip6tables -I OUTPUT 1 -m owner --uid-owner "$RUNNER_UID" -j "$CHAIN" || true
+    fi
+    echo "aturan firewall runner dipasang (uid $RUNNER_UID, alamat host: $(echo $HOSTIPS | tr ' ' ','))" ;;
+  *) echo "pakai: $0 start|stop|status"; exit 2 ;;
+esac

@@ -1,0 +1,14 @@
+[Unit]
+Description=Firewall untuk container karya (Docker rootless milik user runner)
+Documentation=file:///usr/local/sbin/fasinova-runner-firewall
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fasinova-runner-firewall start
+ExecStop=/usr/local/sbin/fasinova-runner-firewall stop
+
+[Install]
+WantedBy=multi-user.target

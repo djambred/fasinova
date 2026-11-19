@@ -404,12 +404,12 @@ Karena `deployer` memakai image yang sama dan berjalan sebagai UID `runner`, fol
 2. Buat user `runner` tanpa sudo; pasang Docker rootless untuk user itu (`dockerd-rootless-setuptool.sh install`) dan aktifkan `loginctl enable-linger runner` agar daemon tetap hidup.
 3. Aktifkan cgroup v2 dan delegasi systemd (`Delegate=cpu cpuset io memory pids`) untuk user `runner`, supaya `mem_limit`/`cpus` berlaku \[Kemungkinan Besar\].
 4. Buat `/home/runner/apps` milik `runner`.
-5. Firewall: masuk 80/443 publik; 22 dan 81 hanya dari IP admin; port 20000–20999 tidak dibuka (terikat ke 127.0.0.1).
+5. Firewall: masuk 80/443 publik; 22 hanya dari IP admin; port 20000–20999 tidak dibuka (terikat ke 127.0.0.1). **Firewall keluar untuk container karya:** pasang `docker/firewall/` (aturan iptables berbasis uid `runner` lewat unit systemd): container karya tidak boleh menjangkau host sendiri selain 80/443 (SSH!), jaringan privat/bridge Docker utama, dan metadata cloud; internet publik, DNS, dan jaringan antar-container di daemon rootless tetap terbuka.
 6. Domain: beli domain, buat record `A @` dan `A *` ke IP server (di penyedia DNS domain itu), set `APP_DOMAIN` dan `CADDY_TLS=acme`; Caddy menerbitkan sertifikat tiap hostname sendiri. Buat `/run/fasinova` milik user `runner` (mode 0750) untuk socket admin Caddy.
 7. Jadwalkan `docker system prune` mingguan untuk kedua daemon; peringatan saat disk > 80%.
 8. Nyalakan server database karya sekali: `DOCKER_HOST=unix:///run/user/<UID runner>/docker.sock KARYA_DB_ROOT_PASSWORD=... docker compose -f docker-compose.runner.yml up -d` (membuat jaringan `fz-db`, container `karya-mariadb` dan `karya-postgres`, dan dua volume data).
 
-**PoC minggu 1 (syarat lanjut)**: deploy satu demo Streamlit contoh lewat Docker rootless, buktikan (a) Caddy menjangkau `127.0.0.1:<port>`, (b) websocket berjalan lewat HTTPS, (c) batas RAM dipatuhi, (d) container tidak bisa menjangkau PostgreSQL/Redis FASINOVA, (e) container karya di Docker rootless bergabung ke jaringan `fz-db`, menjangkau `karya-mariadb`/`karya-postgres` lewat nama container, dan tidak bisa membuka database karya lain. Bila (c) atau (d) gagal, cadangannya adalah VM terpisah seperti rancangan sebelumnya.
+**PoC minggu 1 (syarat lanjut)**: deploy satu demo Streamlit contoh lewat Docker rootless, buktikan (a) Caddy menjangkau `127.0.0.1:<port>`, (b) websocket berjalan lewat HTTPS, (c) batas RAM dipatuhi, (d) container tidak bisa menjangkau PostgreSQL/Redis FASINOVA maupun SSH host (uji dari container di subnet rootless yang tidak bentrok dengan 172.17/16 dan 172.18/16 milik Docker utama, kalau tidak hasilnya menyesatkan), (e) container karya di Docker rootless bergabung ke jaringan `fz-db`, menjangkau `karya-mariadb`/`karya-postgres` lewat nama container, dan tidak bisa membuka database karya lain. Bila (c) atau (d) gagal, cadangannya adalah VM terpisah seperti rancangan sebelumnya.
 
 ## 9. Kebutuhan non-fungsional dan keamanan
 
