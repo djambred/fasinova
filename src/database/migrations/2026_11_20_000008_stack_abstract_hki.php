@@ -1,0 +1,17 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('deployments', fn (Blueprint $t) => $t->string('stack')->nullable()); // js | laravel | streamlit
+        Schema::table('innovations', function (Blueprint $t) {
+            $t->text('abstract')->nullable();
+            $t->string('hki')->nullable(); // nomor/keterangan HKI bila sudah ada
+        });
+    }
+};

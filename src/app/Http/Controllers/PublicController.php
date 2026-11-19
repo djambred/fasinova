@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Innovation;
+use App\Models\Track;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+
+class PublicController extends Controller
+{
+    public function home(Request $r)
+    {
+        $items = Innovation::with('track', 'deployment')->where('status', 'published')
+            ->when($r->q, fn ($q, $v) => $q->where(fn ($w) => $w->where('title', 'ilike', "%$v%")->orWhere('problem', 'ilike', "%$v%")))
+            ->when($r->track, fn ($q, $v) => $q->where('track_id', $v))
+            ->when($r->prodi, fn ($q, $v) => $q->where('study_program', $v))
+            ->when($r->tahun, fn ($q, $v) => $q->where('academic_period', $v))
+            ->latest('published_at')->paginate(12)->withQueryString();
+
+        $pub = Innovation::where('status', 'published');
+        return view('site.home', [
+            'items' => $items, 'tracks' => Track::all(),
+            'prodis' => (clone $pub)->whereNotNull('study_program')->distinct()->pluck('study_program'),
+            'tahuns' => (clone $pub)->whereNotNull('academic_period')->distinct()->pluck('academic_period'),
+        ]);
+    }
+
+    public function show(string $slug)
+    {
+        $i = Innovation::with('track', 'owner', 'supervisor', 'resultCard', 'deployment')->where('status', 'published')->where('slug', $slug)->firstOrFail();
+        return view('site.show', ['i' => $i]);
+    }
+
+    public function inquire(Request $r, string $slug)
+    {
+        $i = Innovation::where('status', 'published')->where('slug', $slug)->firstOrFail();
+        $d = $r->validate(['name' => 'required|max:100', 'email' => 'required|email', 'organization' => 'nullable|max:150',
+            'message' => 'required|max:2000', 'pdp' => 'accepted']);
+
+        // shortcut: tanpa kunci Turnstile (dev) pemeriksaan dilewati; wajib diisi di produksi.
+        if ($secret = config('fasinova.turnstile_secret')) {
+            $ok = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                'secret' => $secret, 'response' => $r->input('cf-turnstile-response'), 'remoteip' => $r->ip(),
+            ])->json('success');
+            abort_unless($ok, 422, 'Verifikasi Turnstile gagal.');
+        }
+        $inq = $i->inquiries()->create(collect($d)->except('pdp')->all());
+        \App\Support\Notify::users(\App\Support\Notify::admins(), 'Inquiry kolaborasi baru', "{$inq->name} — {$i->title}", '/admin/inquiries', 'info');
+        return back()->with('ok', 'Terima kasih, pesan Anda terkirim. Kami membalas dalam 5 hari kerja.');
+    }
+
+}

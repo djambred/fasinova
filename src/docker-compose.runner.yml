@@ -1,0 +1,44 @@
+# Server database untuk KARYA mahasiswa. Dijalankan SEKALI oleh user `runner` terhadap Docker rootless-nya
+# (bukan Docker utama), supaya container karya bisa menjangkaunya lewat jaringan `fz-db` tanpa membuka port ke host:
+#
+#   export DOCKER_HOST=unix:///run/user/$(id -u runner)/docker.sock
+#   KARYA_DB_ROOT_PASSWORD=... docker compose -f docker-compose.runner.yml up -d
+name: fasinova-runner
+
+services:
+  karya-mariadb:
+    image: mariadb:11
+    container_name: karya-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${KARYA_DB_ROOT_PASSWORD:?isi KARYA_DB_ROOT_PASSWORD}
+    volumes: [mariadb-data:/var/lib/mysql]
+    networks: [fz-db]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+
+  karya-postgres:
+    image: postgres:16-alpine
+    container_name: karya-postgres
+    environment:
+      POSTGRES_USER: karya_admin
+      POSTGRES_PASSWORD: ${KARYA_DB_ROOT_PASSWORD:?isi KARYA_DB_ROOT_PASSWORD}
+    volumes: [pg-karya-data:/var/lib/postgresql/data]
+    networks: [fz-db]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karya_admin"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+
+networks:
+  fz-db:
+    name: fz-db
+
+volumes:
+  mariadb-data:
+  pg-karya-data:
