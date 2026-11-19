@@ -95,7 +95,7 @@ class DeploymentResource extends Resource
             ->schema([
                 TextInput::make('cpu_limit')->numeric()->minValue(0.1)->maxValue(4)->required(),
                 TextInput::make('mem_limit_mb')->numeric()->minValue(128)->maxValue(4096)->required(),
-                CheckboxList::make('allowed_caps')->options(array_combine(config('fasinova.allowed_caps'), config('fasinova.allowed_caps'))),
+                CheckboxList::make('allowed_caps')->label('Kapabilitas tambahan (dasar selalu aktif)')->options(array_combine($extra = array_values(array_diff(config('fasinova.allowed_caps'), config('fasinova.base_caps'))), $extra)),
             ])->action(function (Deployment $d, array $data) {
                 $d->update($data + ['needs_redeploy' => true]);
                 AuditLog::record('deploy.quota', $d->innovation_id, $data);

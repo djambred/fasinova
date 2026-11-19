@@ -41,6 +41,7 @@ class PolicyTest extends TestCase
         $this->assertArrayNotHasKey('ports', $h['services']['db']);
         $this->assertArrayNotHasKey('container_name', $h['services']['web']);
         $this->assertSame(['ALL'], $h['services']['db']['cap_drop']);
+        $this->assertEqualsCanonicalizing(config('fasinova.base_caps'), $h['services']['db']['cap_add']); // image resmi bisa chown saat start
     }
 
     public function test_db_network_is_attached_only_when_requested(): void
@@ -83,6 +84,17 @@ class PolicyTest extends TestCase
         $this->assertSame(['php', 8000], \App\Services\Deployer::detectPublic($c, 'php', 8000));     // pilihan eksplisit tanpa ports -> port cadangan
         $this->assertSame(['app', 8000], \App\Services\Deployer::detectPublic(['services' => ['app' => ['ports' => ['8000:8000']]]], null, 1));    // bentuk string
         $this->assertSame(['a', 1234], \App\Services\Deployer::detectPublic(['services' => ['a' => ['image' => 'i']]], null, 1234));            // tanpa ports sama sekali
+    }
+
+    public function test_extra_caps_are_added_on_top_of_base_without_duplicates(): void
+    {
+        $h = ComposePolicy::harden(['services' => ['web' => ['image' => 'x']]], 's', 'web', 80, 20001, 0.5, 512, ['NET_BIND_SERVICE', 'CHOWN']);
+        $caps = $h['services']['web']['cap_add'];
+        $this->assertSame(count($caps), count(array_unique($caps)));
+        $this->assertContains('NET_BIND_SERVICE', $caps);
+        $this->assertContains('SETUID', $caps);
+        $this->assertSame([], ComposePolicy::check(['services' => ['a' => ['image' => 'x', 'cap_add' => ['FOWNER']]]], []));      // diizinkan
+        $this->assertNotEmpty(ComposePolicy::check(['services' => ['a' => ['image' => 'x', 'cap_add' => ['SYS_ADMIN']]]], []));   // tetap ditolak
     }
 
     public function test_claims(): void

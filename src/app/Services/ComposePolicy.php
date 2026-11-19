@@ -62,7 +62,7 @@ class ComposePolicy
             $s['restart'] = 'unless-stopped';
             $s['security_opt'] = ['no-new-privileges:true'];
             $s['cap_drop'] = ['ALL'];
-            if ($caps) $s['cap_add'] = array_values($caps);
+            $s['cap_add'] = array_values(array_unique([...config('fasinova.base_caps'), ...$caps]));
             $s['mem_limit'] = $memMb.'m';
             $s['cpus'] = $cpu;
             $s['pids_limit'] = 256;

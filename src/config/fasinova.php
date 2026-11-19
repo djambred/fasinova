@@ -37,7 +37,12 @@ return [
     'forbidden_subdomain_words' => ['porn', 'xxx', 'judi', 'slot', 'togel', 'bokep'],
     'reserved_subdomains' => ['www', 'admin', 'api', 'mail', 'panel', 'app', 'sales'],
     'max_services' => 5,
-    'allowed_caps' => ['CHOWN', 'SETUID', 'SETGID'],
+    // Kapabilitas dasar yang SELALU diberikan (setelah cap_drop ALL): image resmi (nginx, mariadb, postgres, php-fpm)
+    // butuh ini untuk chown folder data dan turun hak ke user non-root saat start. Di Docker rootless, kapabilitas ini
+    // hanya berlaku di dalam user namespace (bukan root di host).
+    'base_caps' => ['CHOWN', 'SETUID', 'SETGID', 'FOWNER', 'DAC_OVERRIDE'],
+    // Tambahan yang boleh dipilih PIC per karya (selain base_caps) dan yang boleh dideklarasikan di compose mahasiswa.
+    'allowed_caps' => ['CHOWN', 'SETUID', 'SETGID', 'FOWNER', 'DAC_OVERRIDE', 'NET_BIND_SERVICE', 'SYS_CHROOT', 'KILL', 'SETPCAP', 'FSETID'],
     'revision_days' => 7,
     // false: rahasia di repo publik hanya diperingatkan (deploy lanjut); true: deploy dibatalkan.
     'gitleaks_block' => (bool) env('GITLEAKS_BLOCK', false),
