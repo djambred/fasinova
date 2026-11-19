@@ -50,7 +50,7 @@ class EditInnovation extends EditRecord
             }),
             Action::make('envExample')->label('Ambil kunci dari .env.example')->icon('heroicon-o-arrow-down-tray')->visible(fn () => $this->isWebForm())->action(function () {
                 $r = $this->record->repository;
-                $raw = Http::get("https://raw.githubusercontent.com/{$r->owner}/{$r->name}/".($r->tag ?: 'HEAD')."/.env.example");
+                $raw = Http::get("https://raw.githubusercontent.com/{$r->owner}/{$r->name}/".($r->tag ?: 'HEAD').'/'.($r->validation_report['env_example'] ?? '.env.example'));
                 if (! $raw->ok()) { Notification::make()->title('.env.example tidak ditemukan (validasi repo dulu).')->danger()->send(); return; }
                 preg_match_all('/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/m', $raw->body(), $m);
                 foreach (array_unique($m[1]) as $key) {

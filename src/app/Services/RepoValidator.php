@@ -25,6 +25,7 @@ class RepoValidator
             return $ok;
         };
         $sha = null;
+        $envExample = null;
 
         if ($add('Format URL', (bool) preg_match('#^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?$#', (string) $repo->url, $m))) {
             [, $owner, $name] = $m;
@@ -52,10 +53,15 @@ class RepoValidator
                     }
                     $tree = $this->gh("/repos/$owner/$name/git/trees/$sha?recursive=1");
                     $paths = collect($tree->json('tree', []))->pluck('path');
+                    // File wajib dicari di akar repo atau di folder level 1–2 (mis. monorepo: src/.env.example).
+                    $has = fn (string $f) => $paths->contains(fn ($p) => $p === $f || (bool) preg_match('#^([^/]+/){1,2}'.preg_quote($f, '#').'$#', $p));
                     foreach ($track->required_files ?? [] as $req) {
-                        $alts = explode('|', $req);
-                        $add("File wajib: $req", collect($alts)->contains(fn ($a) => $paths->contains($a)), 'Tidak ditemukan pada versi yang dipakai');
+                        $add("File wajib: $req", collect(explode('|', $req))->contains($has), 'Tidak ditemukan di akar repo maupun folder level 1–2');
                     }
+                    // .env ter-commit = kunci sudah bocor di repo publik; deployer akan menolaknya, jadi beri tahu sejak validasi.
+                    $committedEnv = $paths->first(fn ($p) => (bool) preg_match('#(^|/)\.env$#', $p));
+                    $add('Tidak ada .env ter-commit', $committedEnv === null, $committedEnv ? "$committedEnv ada di repo: hapus dari repo dan rotasi kunci yang pernah ada di dalamnya" : '');
+                    $envExample = $paths->first(fn ($p) => (bool) preg_match('#^([^/]+/){0,2}\.env\.example$#', $p));
                     $raw = Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/docker-compose.yml");
                     if ($raw->ok()) {
                         try {
@@ -72,7 +78,7 @@ class RepoValidator
             'locked_commit_sha' => $repo->locked_commit_sha, // SHA dikunci saat PIC menyetujui, bukan di sini
         ])->save();
         // SHA terbaru dari tag disimpan di laporan untuk dikunci saat approve
-        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'ok' => collect($items)->every('ok')]]);
+        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'env_example' => $envExample ?? null, 'ok' => collect($items)->every('ok')]]);
 
         return $items;
     }
