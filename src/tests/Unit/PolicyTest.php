@@ -164,4 +164,21 @@ class PolicyTest extends TestCase
         $this->assertNotNull(ClaimChecker::blocking(['baseline' => ' '], 'ai'));
         $this->assertNull(ClaimChecker::blocking(['baseline' => 'LogReg'], 'ai'));
     }
+
+    public function test_auto_containerize_bare_streamlit_repo(): void
+    {
+        $dir = sys_get_temp_dir().'/fz-auto-'.uniqid();
+        mkdir($dir);
+        file_put_contents("$dir/app.py", "import streamlit as st\nst.title('x')\n");
+        file_put_contents("$dir/requirements.txt", "streamlit\n");
+        $d = new \App\Models\Deployment(['stack' => 'streamlit', 'internal_port' => 8501]);
+        $msgs = \App\Services\Deployer::autoContainerize($dir, $d);
+        $this->assertCount(2, $msgs);
+        $this->assertStringContainsString('"streamlit", "run", "app.py", "--server.port=8501"', file_get_contents("$dir/Dockerfile"));
+        $this->assertStringContainsString('pip install --no-cache-dir -r requirements.txt', file_get_contents("$dir/Dockerfile"));
+        $compose = \App\Services\ComposePolicy::parseYaml(file_get_contents("$dir/docker-compose.yml"));
+        $this->assertSame(['8501'], $compose['services']['app']['ports']);
+        $this->assertSame([], \App\Services\Deployer::autoContainerize($dir, $d));          // sudah ada compose: tidak disentuh lagi
+        array_map('unlink', glob("$dir/*")); rmdir($dir);
+    }
 }

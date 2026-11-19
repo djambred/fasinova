@@ -98,8 +98,19 @@ class RepoValidator
                     $paths = collect($tree->json('tree', []))->pluck('path');
                     // File wajib dicari di akar repo atau di folder level 1–2 (mis. monorepo: src/.env.example).
                     $has = fn (string $f) => $paths->contains(fn ($p) => $p === $f || (bool) preg_match('#^([^/]+/){1,2}'.preg_quote($f, '#').'$#', $p));
+                    $stack = $this->detectStack($paths, $owner, $name, $sha);
+                    // Tiga berkas umum tidak menghalangi deploy bila FASINOVA bisa menutupinya sendiri: Dockerfile/compose dibuatkan
+                    // untuk Streamlit, .env.example & README hanya pelengkap (aplikasi tanpa env tetap jalan). Berkas SOP lain tetap wajib.
+                    $soft = ['.env.example' => 'Tidak ada; aplikasi dijalankan tanpa variabel tambahan.', 'README.md' => 'Tidak ada; sebaiknya ditambahkan untuk pengunjung.'];
                     foreach ($track->required_files ?? [] as $req) {
-                        $add("File wajib: $req", collect(explode('|', $req))->contains($has), 'Tidak ditemukan di akar repo maupun folder level 1–2');
+                        $found = collect(explode('|', $req))->contains($has);
+                        if (! $found && $stack === 'streamlit' && str_contains($req, 'docker')) {
+                            $items[] = ['label' => "File wajib: $req", 'ok' => true, 'warn' => true, 'detail' => 'Tidak ada; FASINOVA membuatkan Dockerfile + docker-compose.yml otomatis (Streamlit).'];
+                        } elseif (! $found && isset($soft[$req])) {
+                            $items[] = ['label' => "File wajib: $req", 'ok' => true, 'warn' => true, 'detail' => $soft[$req]];
+                        } else {
+                            $add("File wajib: $req", $found, 'Tidak ditemukan di akar repo maupun folder level 1–2');
+                        }
                     }
                     // .env ter-commit bukan penghalang: deployer menimpanya dengan env dari FASINOVA. Hanya diberi tanda peringatan.
                     $committedEnv = $paths->first(fn ($p) => (bool) preg_match('#(^|/)\.env$#', $p));
@@ -108,7 +119,6 @@ class RepoValidator
                             'detail' => "$committedEnv akan ditimpa otomatis dengan variabel dari FASINOVA; kunci di dalamnya sebaiknya dianggap sudah bocor."];
                     }
                     $envExample = $paths->first(fn ($p) => (bool) preg_match('#^([^/]+/){0,2}\.env\.example$#', $p));
-                    $stack = $this->detectStack($paths, $owner, $name, $sha);
                     if ($stack) $items[] = ['label' => 'Stack terdeteksi: '.config("fasinova.stacks.$stack.label"), 'ok' => true, 'detail' => $this->applyStack($i, $stack)];
                     $raw = Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/docker-compose.yml");
                     if ($raw->ok()) {

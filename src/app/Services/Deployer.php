@@ -44,6 +44,7 @@ class Deployer
             if ($head !== $sha) throw new \RuntimeException("HEAD $head bukan SHA terkunci $sha.");
             // Symlink dari repo yang menunjuk ke luar folder karya = jalan membaca/menulis berkas karya lain atau host.
             foreach (self::stripEscapingSymlinks($dir) as $rel) $this->log('cloning', 'err', "symlink keluar folder karya dihapus: $rel");
+            foreach (self::autoContainerize($dir, $this->d) as $msg) $this->log('cloning', 'out', $msg);
 
             $this->step('scanning');
             // Pemindaian rahasia bersifat penasihat: repo publik yang berisi kunci tidak membahayakan server, hanya pemiliknya.
@@ -253,6 +254,37 @@ class Deployer
             foreach (preg_split('/\r?\n/', trim($p->getOutput().$p->getErrorOutput())) as $line) if ($line !== '') $this->log('health_check', 'err', $this->mask($line));
         } catch (\Throwable) {
         }
+    }
+
+    /**
+     * Repo tanpa docker-compose: FASINOVA yang menyesuaikan. Streamlit tanpa Dockerfile dibuatkan Dockerfile; repo yang punya
+     * Dockerfile (atau baru dibuatkan) dibuatkan docker-compose.yml satu service. Mengembalikan pesan log.
+     */
+    public static function autoContainerize(string $dir, Deployment $d): array
+    {
+        foreach (['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'] as $f) if (is_file("$dir/$f")) return [];
+        $msgs = [];
+        $port = (int) ($d->internal_port ?: config("fasinova.stacks.{$d->stack}.port", 8501));
+        if (! is_file("$dir/Dockerfile") && ($entry = self::streamlitEntry($dir))) {
+            $req = is_file("$dir/requirements.txt") ? "COPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n" : "RUN pip install --no-cache-dir streamlit\n";
+            self::writeFile("$dir/Dockerfile", "FROM python:3.12-slim\nWORKDIR /app\n{$req}COPY . .\nEXPOSE $port\n"
+                .'CMD ["streamlit", "run", '.json_encode($entry).', "--server.port='.$port.'", "--server.address=0.0.0.0", "--server.headless=true"]'."\n", 0644);
+            $msgs[] = "Dockerfile dibuat otomatis (Streamlit, $entry, port $port).";
+        }
+        if (! is_file("$dir/Dockerfile")) return $msgs;   // tak ada yang bisa dijalankan; validasi kebijakan compose yang akan menolak
+        self::writeFile("$dir/docker-compose.yml", "services:\n  app:\n    build: .\n    ports:\n      - \"$port\"\n    restart: unless-stopped\n", 0644);
+        $msgs[] = "docker-compose.yml dibuat otomatis (service app, port $port).";
+        return $msgs;
+    }
+
+    /** Berkas utama Streamlit di akar repo, atau null bila repo bukan Streamlit. */
+    public static function streamlitEntry(string $dir): ?string
+    {
+        $py = glob("$dir/*.py") ?: [];
+        $isStreamlit = fn (string $f) => str_contains((string) @file_get_contents($f), 'streamlit');
+        foreach (['streamlit_app.py', 'app.py', 'main.py', 'Home.py'] as $f) if (is_file("$dir/$f") && $isStreamlit("$dir/$f")) return $f;
+        foreach ($py as $f) if ($isStreamlit($f)) return basename($f);
+        return null;
     }
 
     /** URL clone dari URL repo apa pun: buang akhiran .git/garis miring lalu tambahkan .git tepat satu kali (mis. ...dagopark.git.git dulu). */

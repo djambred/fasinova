@@ -66,10 +66,12 @@ class RepoValidatorTest extends TestCase
         $this->assertFalse($items3->has('.env ter-commit di repo'));   // tanpa .env: tidak ada item
     }
 
-    public function test_missing_env_example_everywhere_still_fails(): void
+    public function test_missing_env_example_is_only_a_warning(): void
     {
-        [$items] = $this->validate(['docker-compose.yml', 'README.md', 'a/b/c/.env.example']); // terlalu dalam (level 3)
-        $this->assertFalse($items['File wajib: .env.example']['ok']);
+        [$items, $report] = $this->validate(['docker-compose.yml', 'README.md', 'a/b/c/.env.example']); // terlalu dalam (level 3) = dianggap tidak ada
+        $this->assertTrue($items['File wajib: .env.example']['warn']);   // aplikasi tanpa env tetap bisa jalan
+        $this->assertTrue($report['ok']);
+        $this->assertNull($report['env_example']);
     }
 
     private const OK = ['docker-compose.yml', 'README.md', 'src/.env.example'];
@@ -171,5 +173,17 @@ class RepoValidatorTest extends TestCase
         $this->assertSame('js', Innovation::orderByDesc("id")->first()->deployment->stack);
         $this->validate($base);                                                              // tak yakin: dibiarkan kosong
         $this->assertNull(Innovation::orderByDesc("id")->first()->deployment->stack);
+    }
+
+    public function test_bare_streamlit_repo_passes_with_auto_dockerfile_and_soft_files(): void
+    {
+        [$items, $report] = $this->validate(['app.py', 'requirements.txt'], rawBody: "streamlit\npandas\n");   // kasus dbddenguetangerang
+        $this->assertTrue($report['ok']);
+        $this->assertSame('streamlit', $report['stack']);
+        $this->assertTrue($items['File wajib: Dockerfile|docker-compose.yml']['warn']);
+        $this->assertTrue($items['File wajib: .env.example']['warn']);
+        $this->assertTrue($items['File wajib: README.md']['warn']);
+        [, $flask] = $this->validate(['app.py', 'requirements.txt'], rawBody: "flask\n");          // bukan Streamlit: tetap butuh Docker
+        $this->assertFalse($flask['ok']);
     }
 }
