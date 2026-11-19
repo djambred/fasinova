@@ -26,10 +26,14 @@ class RepoValidator
         };
         $sha = null;
         $envExample = null;
+        $refType = null;
 
-        if ($add('Format URL', (bool) preg_match('#^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?$#', (string) $repo->url, $m))) {
+        // Terima apa pun yang wajar ditempel mahasiswa: akhiran .git, garis miring akhir, atau tautan halaman GitHub (/tree/<branch>/<folder>).
+        // Disimpan dalam bentuk kanonik https://github.com/<pemilik>/<repo>; branch dari /tree/ dipakai bila kolom tag kosong.
+        if ($add('Format URL', (bool) preg_match('#^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?(?:/(?:tree|blob)/([^/]+)(?:/.*)?)?/?$#', trim((string) $repo->url), $m))) {
             [, $owner, $name] = $m;
-            $repo->fill(['owner' => $owner, 'name' => $name]);
+            $urlRef = $m[3] ?? null;
+            $repo->fill(['owner' => $owner, 'name' => $name, 'url' => "https://github.com/$owner/$name"]);
             $org = config('fasinova.github_org');
             $add('Organisasi prodi', $org && strcasecmp($owner, $org) === 0, "Harus di organisasi $org");
             $prefix = $track->repo_prefix;
@@ -37,17 +41,30 @@ class RepoValidator
 
             $r = $this->gh("/repos/$owner/$name");
             if ($add('Repo ditemukan & publik', $r->ok() && ! $r->json('private'), $r->ok() ? ($r->json('private') ? 'Repo privat ditolak' : '') : 'Repo tidak ditemukan atau privat')) {
-                $tag = trim((string) $repo->tag);
-                if ($tag !== '') {
-                    $ref = $this->gh("/repos/$owner/$name/git/ref/tags/".rawurlencode($tag));
-                    $found = $add("Tag $tag ada", $ref->ok());
-                } else { // tag opsional: pakai branch default; SHA terkini dikunci saat PIC menyetujui
+                $want = trim((string) $repo->tag) ?: $urlRef;
+                $refType = null;
+                $path = fn (string $n) => str_replace('%2F', '/', rawurlencode($n));   // nama branch boleh berisi "/"
+                if ($want) {
+                    // Kolom "tag" menerima tag, branch, atau commit: mahasiswa sering mengisi nama branch (mis. main).
+                    $ref = $this->gh("/repos/$owner/$name/git/ref/tags/".$path($want));
+                    if ($ref->ok()) { $refType = 'tag'; $add("Tag $want ada", true); }
+                    else {
+                        $ref = $this->gh("/repos/$owner/$name/git/ref/heads/".$path($want));
+                        if ($ref->ok()) { $refType = 'branch'; $add("Branch $want ada (bukan tag; versi terkini branch dikunci saat disetujui)", true); }
+                        elseif (preg_match('/^[0-9a-f]{7,40}$/i', $want) && ($c = $this->gh("/repos/$owner/$name/commits/$want"))->ok()) {
+                            $refType = 'commit'; $ref = $c; $add("Commit $want ada", true);
+                        }
+                    }
+                    $found = $refType !== null;
+                    if (! $found) $add("Tag/branch/commit '$want' ada", false, 'Tidak ditemukan sebagai tag, branch, maupun commit. Kosongkan kolom Tag untuk memakai branch default ('.($r->json('default_branch') ?: 'main').').');
+                } else { // kosong: pakai branch default; SHA terkini dikunci saat PIC menyetujui
                     $branch = $r->json('default_branch') ?: 'main';
-                    $ref = $this->gh("/repos/$owner/$name/git/ref/heads/".rawurlencode($branch));
+                    $ref = $this->gh("/repos/$owner/$name/git/ref/heads/".$path($branch));
                     $found = $add("Branch default ($branch) ada (tanpa tag)", $ref->ok());
+                    $refType = $found ? 'default' : null;
                 }
                 if ($found) {
-                    $sha = $ref->json('object.sha');
+                    $sha = $refType === 'commit' ? $ref->json('sha') : $ref->json('object.sha');
                     if ($ref->json('object.type') === 'tag') {
                         $sha = $this->gh("/repos/$owner/$name/git/tags/$sha")->json('object.sha');
                     }
@@ -81,7 +98,7 @@ class RepoValidator
             'locked_commit_sha' => $repo->locked_commit_sha, // SHA dikunci saat PIC menyetujui, bukan di sini
         ])->save();
         // SHA terbaru dari tag disimpan di laporan untuk dikunci saat approve
-        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'env_example' => $envExample ?? null, 'ok' => collect($items)->every('ok')]]);
+        $repo->update(['validation_report' => ['items' => $items, 'tag_sha' => $sha, 'ref_type' => $refType ?? null, 'env_example' => $envExample ?? null, 'ok' => collect($items)->every('ok')]]);
 
         return $items;
     }

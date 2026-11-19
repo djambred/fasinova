@@ -92,8 +92,8 @@ class InnovationResource extends Resource
                 Step::make('Repo GitHub')->visible($deployable)->schema([
                     Group::make()->relationship('repository')->visible($deployable)->schema([
                         TextInput::make('url')->label('Tautan repo (publik)')->url()->placeholder('https://github.com/<org-prodi>/ai-...'),
-                        TextInput::make('tag')->label('Tag (opsional)')->placeholder('mis. v1.0-showcase')
-                            ->helperText('Kosongkan untuk memakai branch default; versi terkini dikunci saat PIC menyetujui.'),
+                        TextInput::make('tag')->label('Tag / branch (opsional)')->placeholder('mis. v1.0-showcase atau main')
+                            ->helperText('Boleh tag, nama branch, atau commit. Kosongkan untuk memakai branch default; versi terkini dikunci saat PIC menyetujui.'),
                     ])->columns(2)->columnSpanFull(),
                     Group::make(fn (?Innovation $record) => collect($record?->repository?->validation_report['items'] ?? [])
                         ->map(fn ($i) => Text::make((($i['warn'] ?? false) ? '⚠️ ' : ($i['ok'] ? '✅ ' : '❌ ')).$i['label'].((! $i['ok'] || ($i['warn'] ?? false)) && $i['detail'] ? " — {$i['detail']}" : '')))->all())->columnSpanFull(),

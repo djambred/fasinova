@@ -33,11 +33,12 @@ class Deployer
             $dir = $this->d->dir();
 
             $this->step('cloning');
-            if (filled($repo->tag)) $this->assertTagUnchanged($repo->url, $repo->tag, $sha); // tanpa tag: SHA terkunci sudah cukup menjaga integritas
+            // Pengecekan 'tag dipindah' hanya untuk tag sungguhan; untuk branch/commit/tanpa tag, SHA yang dikunci saat persetujuan sudah menjaga integritas.
+            if (filled($repo->tag) && ($repo->validation_report['ref_type'] ?? 'tag') === 'tag') $this->assertTagUnchanged(self::cloneUrl($repo->url), $repo->tag, $sha);
             $this->downQuietly('cloning', 'stack lama dihentikan sebelum deploy ulang'); // jangan hapus folder di bawah container yang masih jalan
             $this->removeDir($dir);
             File::ensureDirectoryExists(dirname($dir));
-            $this->run(['git', 'clone', '--quiet', $repo->url.'.git', $dir], null, 'cloning', 300);
+            $this->run(['git', 'clone', '--quiet', self::cloneUrl($repo->url), $dir], null, 'cloning', 300);
             $this->run(['git', 'checkout', '--quiet', '--detach', $sha], $dir, 'cloning');
             $head = trim($this->run(['git', 'rev-parse', 'HEAD'], $dir, 'cloning'));
             if ($head !== $sha) throw new \RuntimeException("HEAD $head bukan SHA terkunci $sha.");
@@ -254,9 +255,15 @@ class Deployer
         }
     }
 
+    /** URL clone dari URL repo apa pun: buang akhiran .git/garis miring lalu tambahkan .git tepat satu kali (mis. ...dagopark.git.git dulu). */
+    public static function cloneUrl(string $url): string
+    {
+        return preg_replace('#(\.git)?/*$#', '', trim($url)).'.git';
+    }
+
     private function assertTagUnchanged(string $url, string $tag, string $sha): void
     {
-        $out = $this->run(['git', 'ls-remote', $url.'.git', "refs/tags/$tag", "refs/tags/$tag^{}"], null, 'cloning', 60);
+        $out = $this->run(['git', 'ls-remote', $url, "refs/tags/$tag", "refs/tags/$tag^{}"], null, 'cloning', 60);
         $lines = array_filter(explode("\n", trim($out)));
         $now = null;
         foreach ($lines as $l) { // baris ^{} (peeled) menang untuk annotated tag
