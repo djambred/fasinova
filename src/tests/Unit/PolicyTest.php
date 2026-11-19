@@ -70,6 +70,21 @@ class PolicyTest extends TestCase
         $this->assertStringContainsString('"ipam":{}', json_encode($h));
     }
 
+    public function test_public_service_is_detected_from_compose_ports(): void
+    {
+        // bentuk compose seperti repo monorepo Laravel: php (fpm, tanpa ports), nginx (80/443), db (3306 dipetakan)
+        $c = ['services' => [
+            'php' => ['image' => 'x'],
+            'nginx' => ['ports' => [['target' => 443, 'published' => '443'], ['target' => 80, 'published' => '80']]],
+            'db' => ['ports' => [['target' => 3306, 'published' => '13306']]],
+        ]];
+        $this->assertSame(['nginx', 80], \App\Services\Deployer::detectPublic($c, null, 8000));      // bukan php/db, dan 80 sebelum 443
+        $this->assertSame(['nginx', 80], \App\Services\Deployer::detectPublic($c, 'nginx', 8000));
+        $this->assertSame(['php', 8000], \App\Services\Deployer::detectPublic($c, 'php', 8000));     // pilihan eksplisit tanpa ports -> port cadangan
+        $this->assertSame(['app', 8000], \App\Services\Deployer::detectPublic(['services' => ['app' => ['ports' => ['8000:8000']]]], null, 1));    // bentuk string
+        $this->assertSame(['a', 1234], \App\Services\Deployer::detectPublic(['services' => ['a' => ['image' => 'i']]], null, 1234));            // tanpa ports sama sekali
+    }
+
     public function test_claims(): void
     {
         $w = ClaimChecker::warnings(['a' => 'Sistem ini 100% aman dan pasti benar', 'b' => 'hasil 95%'], 'cs');

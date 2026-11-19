@@ -58,9 +58,12 @@ class RepoValidator
                     foreach ($track->required_files ?? [] as $req) {
                         $add("File wajib: $req", collect(explode('|', $req))->contains($has), 'Tidak ditemukan di akar repo maupun folder level 1–2');
                     }
-                    // .env ter-commit = kunci sudah bocor di repo publik; deployer akan menolaknya, jadi beri tahu sejak validasi.
+                    // .env ter-commit bukan penghalang: deployer menimpanya dengan env dari FASINOVA. Hanya diberi tanda peringatan.
                     $committedEnv = $paths->first(fn ($p) => (bool) preg_match('#(^|/)\.env$#', $p));
-                    $add('Tidak ada .env ter-commit', $committedEnv === null, $committedEnv ? "$committedEnv ada di repo: hapus dari repo dan rotasi kunci yang pernah ada di dalamnya" : '');
+                    if ($committedEnv) {
+                        $items[] = ['label' => '.env ter-commit di repo', 'ok' => true, 'warn' => true,
+                            'detail' => "$committedEnv akan ditimpa otomatis dengan variabel dari FASINOVA; kunci di dalamnya sebaiknya dianggap sudah bocor."];
+                    }
                     $envExample = $paths->first(fn ($p) => (bool) preg_match('#^([^/]+/){0,2}\.env\.example$#', $p));
                     $raw = Http::get("https://raw.githubusercontent.com/$owner/$name/$sha/docker-compose.yml");
                     if ($raw->ok()) {

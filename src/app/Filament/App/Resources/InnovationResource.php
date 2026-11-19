@@ -96,7 +96,7 @@ class InnovationResource extends Resource
                             ->helperText('Kosongkan untuk memakai branch default; versi terkini dikunci saat PIC menyetujui.'),
                     ])->columns(2)->columnSpanFull(),
                     Group::make(fn (?Innovation $record) => collect($record?->repository?->validation_report['items'] ?? [])
-                        ->map(fn ($i) => Text::make(($i['ok'] ? '✅ ' : '❌ ').$i['label'].(! $i['ok'] && $i['detail'] ? " — {$i['detail']}" : '')))->all())->columnSpanFull(),
+                        ->map(fn ($i) => Text::make((($i['warn'] ?? false) ? '⚠️ ' : ($i['ok'] ? '✅ ' : '❌ ')).$i['label'].((! $i['ok'] || ($i['warn'] ?? false)) && $i['detail'] ? " — {$i['detail']}" : '')))->all())->columnSpanFull(),
                 ]),
 
                 Step::make('Variabel .env')->visible($deployable)

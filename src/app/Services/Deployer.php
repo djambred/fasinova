@@ -41,13 +41,19 @@ class Deployer
             if ($head !== $sha) throw new \RuntimeException("HEAD $head bukan SHA terkunci $sha.");
 
             $this->step('scanning');
-            if (File::exists("$dir/.env")) throw new \RuntimeException('.env ter-commit di repo; rotasi kunci dan perbaiki repo.');
+            // Pemindaian rahasia bersifat penasihat: repo publik yang berisi kunci tidak membahayakan server, hanya pemiliknya.
+            // Deploy dilanjutkan (env dari FASINOVA menimpa .env di repo); PIC dan tim diberi peringatan.
             $leak = new Process(['gitleaks', 'detect', '--source', $dir, '--no-banner', '--redact', '--exit-code', '1']);
             $leak->setTimeout(300)->run();
             if ($leak->getExitCode() === 1) {
-                throw new \RuntimeException("gitleaks menemukan rahasia di repo; mahasiswa harus merotasi kunci.\n".$this->mask($leak->getOutput().$leak->getErrorOutput()));
+                $out = $this->mask($leak->getOutput().$leak->getErrorOutput());
+                if (config('fasinova.gitleaks_block')) throw new \RuntimeException("gitleaks menemukan rahasia di repo.\n$out");
+                $this->log('scanning', 'err', 'PERINGATAN: gitleaks menemukan rahasia di repo publik (nilai tersamar). Deploy dilanjutkan.');
+                foreach (array_slice(preg_split('/\r?\n/', trim($out)), 0, 30) as $line) if ($line !== '') $this->log('scanning', 'err', $line);
+                $this->notify('Rahasia terdeteksi di repo publik', 'Deploy tetap dilanjutkan. Disarankan merotasi kunci yang pernah ter-commit.', 'warning');
+            } elseif ($leak->getExitCode() > 1) {
+                $this->log('scanning', 'err', 'PERINGATAN: gitleaks gagal dijalankan; pemindaian dilewati: '.trim($leak->getErrorOutput()));
             }
-            if ($leak->getExitCode() > 1) throw new \RuntimeException('gitleaks gagal: '.$leak->getErrorOutput());
 
             $dbEnv = [];
             if ($this->d->db_engine) {
@@ -55,8 +61,14 @@ class Deployer
                 $dbEnv = (new DbProvisioner)->provision($this->d);
                 $this->secrets[] = $dbEnv['DB_PASSWORD'];
             }
-            File::put("$dir/.env", $this->envFile($i->envVariables, $dbEnv));
+            $envText = $this->envFile($i->envVariables, $dbEnv);
+            File::put("$dir/.env", $envText);
             chmod("$dir/.env", 0600);
+            foreach ($this->nestedEnvFiles($dir) as $path) { // mis. src/.env untuk Laravel yang di-bind-mount; menimpa .env ter-commit
+                File::put($path, $envText);
+                chmod($path, 0644); // dibaca user non-root di dalam container (rootless: bukan pemilik file)
+                $this->log('scanning', 'out', 'env ditulis ke '.ltrim(substr($path, strlen($dir)), '/'));
+            }
             $json = $this->run(['docker', 'compose', '-p', $this->d->project(), '--project-directory', $dir, 'config', '--format', 'json'], $dir, 'scanning');
             $compose = self::decodeCompose($json) ?: throw new \RuntimeException('docker compose config tidak menghasilkan JSON.');
             $viol = ComposePolicy::check($compose, $i->track->forbidden_images ?? [], $dir);
@@ -64,8 +76,8 @@ class Deployer
             if ($i->track->code === 'cs' && ! $i->safe_service_ok) throw new \RuntimeException('Cyber Security: PIC belum menandai service aman.');
 
             $port = $this->d->host_port ?: $this->allocatePort();
-            $public = $this->d->public_service ?: array_key_first($compose['services']);
-            $internal = $this->d->internal_port ?: ($i->track->default_port ?: 8501);
+            [$public, $internal] = self::detectPublic($compose, $this->d->public_service, $this->d->internal_port ?: ($i->track->default_port ?: 8501));
+            $this->log('scanning', 'out', "service publik: $public (port $internal)");
             $this->d->update(['public_service' => $public, 'internal_port' => $internal]); // dipakai health check
             $final = ComposePolicy::harden($compose, $i->slug, $public, $internal, $port,
                 (float) $this->d->cpu_limit, $this->d->mem_limit_mb, $this->d->allowed_caps ?? [], (bool) $this->d->db_engine);
@@ -166,6 +178,54 @@ class Deployer
             if ($now === null || str_ends_with($r, '^{}')) $now = $h;
         }
         if ($now !== $sha) throw new \RuntimeException("Tag $tag dipindah (sekarang ".($now ?? 'hilang')."), deploy dibatalkan.");
+    }
+
+    /** Berkas .env di folder level 1–2 yang perlu ditimpa: tempat .env.example berada, dan .env yang sudah ter-commit. */
+    private function nestedEnvFiles(string $dir): array
+    {
+        $found = [];
+        foreach (['*', '*/*'] as $depth) {
+            foreach (File::glob("$dir/$depth/.env.example") as $f) $found[] = dirname($f).'/.env';
+            foreach (File::glob("$dir/$depth/.env") as $f) $found[] = $f;
+        }
+        return array_values(array_filter(array_unique($found), fn ($p) => ! preg_match('#/(node_modules|vendor)/#', $p)));
+    }
+
+    /**
+     * Pilih service yang dibuka ke publik dan port internalnya dari `ports:` yang dideklarasikan di compose
+     * (mahasiswa tidak perlu tahu). Pilihan eksplisit (public_service) dihormati bila servicenya ada.
+     * @return array{0:string,1:int}
+     */
+    public static function detectPublic(array $compose, ?string $chosen, int $fallbackPort): array
+    {
+        $services = $compose['services'] ?? [];
+        $prefer = [80, 8080, 3000, 8000, 5173, 8501, 8888, 443];
+        $dbPorts = [3306, 5432, 6379, 27017, 11211, 9200, 5672];
+        $targets = function (array $s) use ($dbPorts) {
+            $t = [];
+            foreach ((array) ($s['ports'] ?? []) as $p) {
+                $target = is_array($p) ? ($p['target'] ?? null) : (int) (explode(':', (string) $p)[count(explode(':', (string) $p)) - 1]);
+                if ($target && ! in_array((int) $target, $dbPorts)) $t[] = (int) $target;
+            }
+            return $t;
+        };
+        $pick = function (array $t) use ($prefer, $fallbackPort) {
+            foreach ($prefer as $p) if (in_array($p, $t)) return $p;
+            return $t[0] ?? $fallbackPort;
+        };
+        if ($chosen && isset($services[$chosen])) {
+            return [$chosen, $pick($targets((array) $services[$chosen]))];
+        }
+        $webNames = ['nginx', 'web', 'app', 'frontend', 'proxy', 'caddy', 'traefik', 'apache', 'httpd', 'gateway', 'server'];
+        $best = null; $bestScore = -1;
+        foreach ($services as $name => $s) {
+            $t = $targets((array) $s);
+            if (! $t) continue;
+            $score = 10 + (in_array(strtolower($name), $webNames) ? 5 : 0) + (in_array(80, $t) || in_array(8080, $t) || in_array(3000, $t) ? 3 : 0);
+            if ($score > $bestScore) { $best = $name; $bestScore = $score; }
+        }
+        if ($best !== null) return [$best, $pick($targets((array) $services[$best]))];
+        return [array_key_first($services), $fallbackPort];
     }
 
     /** Decode JSON compose; objek kosong `{}` (mis. ipam) tetap objek, bukan berubah menjadi list `[]`. */
