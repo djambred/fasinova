@@ -54,12 +54,12 @@ class DatabaseSeeder extends Seeder
             ['riya@esaunggul.ac.id', 'Riya', 'dosen', 'TI'], ['hani@esaunggul.ac.id', 'Hani', 'dosen', 'SI'],
             ['gerry@esaunggul.ac.id', 'Gerry', 'dosen', null], ['habib@esaunggul.ac.id', 'Habib', 'dosen', 'MIK'],
             ['arief@esaunggul.ac.id', 'Arief', 'dosen', 'PJJ'], ['jefry@esaunggul.ac.id', 'Jefry', 'dosen', null],
-            ['thifaal@student.esaunggul.ac.id', 'Thifaal', 'mahasiswa', null],
+            ['thifaal@student.esaunggul.ac.id', 'Thifaal', 'mahasiswa', 'SI'],
         ];
         foreach ($people as [$email, $name, $role, $prog]) {
             $u = User::firstOrCreate(['email' => $email], ['name' => $name, 'password' => 'password', 'role' => $role,
                 'study_program_id' => $prog ? $progs[$prog]->id : null]);
-            if ($prog) $progs[$prog]->update(['head_id' => $u->id]); // kaprodi
+            if ($prog && $role === 'dosen') $progs[$prog]->update(['head_id' => $u->id]); // kaprodi
         }
     }
 }
