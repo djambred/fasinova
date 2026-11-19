@@ -94,7 +94,7 @@ class Deployer
 
             $this->step('starting');
             $this->step('health_check');
-            if (! $this->waitHealthy()) throw new \RuntimeException('Health check gagal setelah 10 percobaan.');
+            if (! $this->waitHealthy()) throw new \RuntimeException('Health check gagal (aplikasi tidak menjawab sampai batas waktu atau service berhenti); lihat log service di atas.');
 
             // Aplikasi yang menangani TLS sendiri (port 80 hanya `return 301 https://...`, port 443 melayani aplikasi): teruskan ke 443 lewat TLS.
             [$code, $redirect] = self::probe($this->d);
@@ -203,14 +203,55 @@ class Deployer
         return array_values(array_filter($t));
     }
 
+    /**
+     * Tunggu sampai sehat. Gagal cepat bila service publik sudah berhenti atau crash-loop (tak ada gunanya menunggu 5 menit),
+     * dan sertakan potongan lognya supaya penyebabnya terlihat di log deploy.
+     */
     private function waitHealthy(): bool
     {
-        for ($n = 1; $n <= 10; $n++) {
+        $max = (int) config('fasinova.health_attempts', 50);
+        $restarting = 0;
+        for ($n = 1; $n <= $max; $n++) {
             if (self::healthy($this->d)) return true;
-            $this->log('health_check', 'out', "percobaan $n/10 belum sehat");
+            $state = self::parseComposePs($this->psOutput())[$this->d->public_service] ?? 'tidak-ada';
+            if ($n === 1 || $n % 5 === 0) $this->log('health_check', 'out', "percobaan $n/$max belum sehat (service {$this->d->public_service}: $state)");
+            if (in_array($state, ['exited', 'dead'], true)) { $this->log('health_check', 'err', "service publik berhenti ($state)"); $this->logTail(); return false; }
+            $restarting = $state === 'restarting' ? $restarting + 1 : 0;
+            if ($restarting >= 5) { $this->log('health_check', 'err', 'service publik crash berulang (restarting)'); $this->logTail(); return false; }
             sleep(6);
         }
+        $this->logTail();
         return false;
+    }
+
+    /** @return array<string,string> service => state (running, exited, restarting, ...) dari output `compose ps -a --format json` */
+    public static function parseComposePs(string $out): array
+    {
+        $rows = json_decode($out, true);                               // bentuk array JSON
+        if (! is_array($rows) || ($rows && ! array_is_list($rows))) {   // atau satu objek per baris (NDJSON)
+            $rows = array_filter(array_map(fn ($l) => json_decode($l, true), preg_split('/\r?\n/', trim($out))));
+        }
+        $states = [];
+        foreach ($rows as $r) if (isset($r['Service'], $r['State'])) $states[$r['Service']] = strtolower($r['State']);
+        return $states;
+    }
+
+    private function psOutput(): string
+    {
+        $p = new Process($this->compose('ps', '-a', '--format', 'json'), $this->d->dir());
+        $p->setTimeout(60)->run();
+        return $p->isSuccessful() ? $p->getOutput() : '';
+    }
+
+    /** Potongan log service publik ke log deploy (nilai rahasia disamarkan). */
+    private function logTail(): void
+    {
+        try {
+            $p = new Process($this->compose('logs', '--no-color', '--tail', '25', $this->d->public_service), $this->d->dir());
+            $p->setTimeout(60)->run();
+            foreach (preg_split('/\r?\n/', trim($p->getOutput().$p->getErrorOutput())) as $line) if ($line !== '') $this->log('health_check', 'err', $this->mask($line));
+        } catch (\Throwable) {
+        }
     }
 
     private function assertTagUnchanged(string $url, string $tag, string $sha): void

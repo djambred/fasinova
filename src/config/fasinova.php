@@ -46,6 +46,8 @@ return [
     'revision_days' => 7,
     // false: rahasia di repo publik hanya diperingatkan (deploy lanjut); true: deploy dibatalkan.
     'gitleaks_block' => (bool) env('GITLEAKS_BLOCK', false),
+    // Jendela tunggu health check: percobaan x 6 detik (50 = ±5 menit). Aplikasi yang memasang dependensi saat start butuh >1 menit.
+    'health_attempts' => (int) env('HEALTH_ATTEMPTS', 50),
     'probe_image' => env('PROBE_IMAGE', 'curlimages/curl:8.10.1'),
     'build_timeout' => 900,
     'claim_phrases' => ['100% aman', 'tidak bisa diretas', 'pasti', 'selalu', 'menggantikan manusia'],

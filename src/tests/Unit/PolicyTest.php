@@ -142,6 +142,17 @@ class PolicyTest extends TestCase
         $this->assertSame("A=\"1\\\"2\\\$3\"\nB=\"x\"\n", $D::envText(['A' => '1"2$3', 'B' => 'x']));   // kutip dan $ di-escape
     }
 
+    public function test_compose_ps_parsing_supports_ndjson_and_array(): void
+    {
+        $D = \App\Services\Deployer::class;
+        $nd = "{\"Service\":\"nginx\",\"State\":\"running\"}\n{\"Service\":\"php\",\"State\":\"Restarting\"}\n{\"Service\":\"db\",\"State\":\"exited\"}\n";
+        $this->assertSame(['nginx' => 'running', 'php' => 'restarting', 'db' => 'exited'], $D::parseComposePs($nd));
+        $arr = '[{"Service":"web","State":"running"}]';
+        $this->assertSame(['web' => 'running'], $D::parseComposePs($arr));
+        $this->assertSame([], $D::parseComposePs(''));
+        $this->assertSame([], $D::parseComposePs('bukan json'));
+    }
+
     public function test_claims(): void
     {
         $w = ClaimChecker::warnings(['a' => 'Sistem ini 100% aman dan pasti benar', 'b' => 'hasil 95%'], 'cs');
