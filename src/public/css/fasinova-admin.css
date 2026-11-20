@@ -69,3 +69,11 @@ a.fi-wi-stats-overview-stat:hover,.fi-wi-stats-overview-stat:hover{transform:tra
 .fx-brand-sep{width:1px;height:26px;background:rgba(255,255,255,.4)}
 .fx-brand-name{font-size:16px;font-weight:700;letter-spacing:.02em;color:#fff}
 @media (max-width:640px){.fx-brand-sep,.fx-brand-name{display:none}}
+
+/* Tombol: Filament memilih shade 400 + teks gelap untuk biru UEU (aturan kontras otomatis) sehingga tampak pucat/nonaktif.
+   Paksa warna resmi dengan teks putih. */
+.fi-btn.fi-color-primary:not(.fi-outlined){background:var(--ueu-blue)!important;color:#fff!important}
+.fi-btn.fi-color-primary:not(.fi-outlined):hover{background:var(--ueu-blue2)!important}
+.fi-btn.fi-color-warning:not(.fi-outlined){background:var(--ueu-orange)!important;color:#fff!important}
+.fi-btn.fi-color-warning:not(.fi-outlined):hover{background:#d95f14!important}
+.fi-btn.fi-color-primary:not(.fi-outlined) .fi-icon,.fi-btn.fi-color-warning:not(.fi-outlined) .fi-icon{color:#fff!important}
