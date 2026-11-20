@@ -23,6 +23,8 @@ class PublicController extends Controller
             'items' => $items, 'tracks' => Track::all(),
             'prodis' => (clone $pub)->whereNotNull('study_program')->distinct()->pluck('study_program'),
             'tahuns' => (clone $pub)->whereNotNull('academic_period')->distinct()->pluck('academic_period'),
+            'total' => (clone $pub)->count(),
+            'live' => (clone $pub)->whereHas('deployment', fn ($q) => $q->where('status', 'live'))->count(),
         ]);
     }
 

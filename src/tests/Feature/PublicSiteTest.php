@@ -32,7 +32,10 @@ class PublicSiteTest extends TestCase
         $this->assertNotNull($i->repository);
         $this->assertSame('deteksi-hoaks', $i->deployment->subdomain);
         $this->get('/')->assertOk()->assertSee('Deteksi Hoaks');
-        $this->get('/karya/deteksi-hoaks')->assertOk();
+        $i->deployment->update(['status' => 'live', 'url' => 'https://deteksi-hoaks.x']);
+        $this->withoutVite()->get('/')->assertOk()->assertSee('img/logo-ueu.png')->assertSee('data-track="ai"', false)
+            ->assertSee('Demo online')->assertSeeInOrder(['<strong>1</strong><span>Karya', '<strong>1</strong><span>Demo online'], false);
+        $this->get('/karya/deteksi-hoaks')->assertOk()->assertDontSee('fx-hero');   // detail karya tetap tata letak lama
         $i->update(['status' => 'draft']);
         $this->get('/karya/deteksi-hoaks')->assertNotFound();
     }

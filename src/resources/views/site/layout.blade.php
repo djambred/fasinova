@@ -15,7 +15,11 @@
     <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{{ $mTitle }}"><meta name="twitter:description" content="{{ $mDesc }}"><meta name="twitter:image" content="{{ $mImg }}">
     <link rel="icon" type="image/svg+xml" href="/icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
     @vite(['resources/css/app.css'])
+    @stack('head')
 </head>
+@hasSection('page')
+<body class="fx">@yield('page')</body></html>
+@else
 <body class="bg-slate-50 text-slate-800">
 <header class="bg-white border-b"><div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
     <a href="/" class="text-xl font-bold text-brand-700">FASINOVA</a>
@@ -27,3 +31,4 @@
 <main class="max-w-6xl mx-auto px-4 py-8">@yield('content')</main>
 <footer class="text-center text-xs text-slate-400 py-8">© Fakultas Ilmu Komputer</footer>
 </body></html>
+@endif

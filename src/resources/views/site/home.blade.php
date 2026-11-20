@@ -1,29 +1,111 @@
 @extends('site.layout')
-@section('content')
-<section class="text-center py-10">
-    <h1 class="text-3xl md:text-4xl font-bold">Karya terbaik mahasiswa Fasilkom</h1>
-    <p class="mt-2 text-slate-600">Jelajahi, tonton, dan coba demo langsung.</p>
-    <form class="mt-6 flex flex-wrap gap-2 justify-center" method="get">
-        <input name="q" value="{{ request('q') }}" placeholder="Cari karya…" class="border rounded px-3 py-2 w-64">
-        <select name="track" class="border rounded px-2"><option value="">Semua peminatan</option>
-            @foreach($tracks as $t)<option value="{{ $t->id }}" @selected(request('track') == $t->id)>{{ $t->name }}</option>@endforeach</select>
-        <select name="prodi" class="border rounded px-2"><option value="">Semua prodi</option>
-            @foreach($prodis as $p)<option @selected(request('prodi') == $p)>{{ $p }}</option>@endforeach</select>
-        <select name="tahun" class="border rounded px-2"><option value="">Semua tahun</option>
-            @foreach($tahuns as $p)<option @selected(request('tahun') == $p)>{{ $p }}</option>@endforeach</select>
-        <button class="bg-brand-600 text-white rounded px-4">Cari</button>
-    </form>
-</section>
-<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-@forelse($items as $i)
-    <a href="/karya/{{ $i->slug }}" class="block bg-white rounded-lg border p-5 hover:shadow">
-        <span class="text-xs rounded bg-brand-50 text-brand-700 px-2 py-0.5">{{ $i->track->name }}</span>
-        <h2 class="mt-2 font-semibold">{{ $i->title }}</h2>
-        <p class="mt-1 text-sm text-slate-600 line-clamp-3">{{ $i->problem }}</p>
-        @if($i->demoUrl())<span class="mt-3 inline-block text-xs text-green-700">● Demo online</span>@endif
-    </a>
-@empty <p class="col-span-full text-center text-slate-500">Belum ada karya terbit.</p>
-@endforelse
+@push('head')
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ asset('css/fasinova.css') }}?v={{ filemtime(public_path('css/fasinova.css')) }}">
+@endpush
+@section('page')
+<div class="fx-top">
+    <div class="fx-wrap">
+        <span>Fakultas Ilmu Komputer · Universitas Esa Unggul</span>
+        <span class="fx-hide"><a href="https://fasilkom.esaunggul.ac.id" target="_blank" rel="noopener">fasilkom.esaunggul.ac.id</a></span>
+    </div>
 </div>
-<div class="mt-8">{{ $items->links() }}</div>
+
+<header class="fx-head">
+    <div class="fx-wrap">
+        <a href="/" class="fx-brand">
+            <img src="{{ asset('img/logo-ueu.png') }}" alt="Universitas Esa Unggul" width="135" height="44">
+            <span class="fx-sep"></span>
+            <span><strong>FASI<span>NOVA</span></strong><small>Fasilkom Innovation Showcase</small></span>
+        </a>
+        <nav class="fx-nav">
+            <a href="/" class="on fx-hide">Beranda</a>
+            @auth <a href="{{ auth()->user()->homeUrl() }}" class="fx-btn">Dasbor</a>
+            @else <a href="{{ route('login') }}" class="fx-btn">Masuk</a> @endauth
+        </nav>
+    </div>
+</header>
+
+<section class="fx-hero">
+    <span class="fx-dot d1"></span><span class="fx-dot d2"></span><span class="fx-dot d3"></span><span class="fx-dot d4"></span>
+    <div class="fx-wrap">
+        <div>
+            <span class="fx-kicker">Showcase Karya Mahasiswa {{ $tahuns->sortDesc()->first() }}</span>
+            <h1>Karya terbaik <em>mahasiswa Fasilkom</em> Universitas Esa Unggul</h1>
+            <p class="fx-sub">Jelajahi, tonton, dan coba langsung demo proyek inovatif dari peminatan {{ $tracks->pluck('name')->map(fn ($n) => preg_replace('/\s*\(.*\)$/', '', $n))->join(', ', ', dan ') }}.</p>
+        </div>
+        <div class="fx-stats">
+            <div class="fx-stat"><strong>{{ $total }}</strong><span>Karya</span></div>
+            <div class="fx-stat"><strong>{{ $tracks->count() }}</strong><span>Peminatan</span></div>
+            <div class="fx-stat hl"><strong>{{ $live }}</strong><span>Demo online</span></div>
+        </div>
+    </div>
+</section>
+
+<main class="fx-wrap">
+    <form class="fx-search" method="get">
+        <input name="q" value="{{ request('q') }}" placeholder="Cari karya, teknologi, atau tim…" aria-label="Cari karya">
+        <select name="track" aria-label="Peminatan">
+            <option value="">Semua peminatan</option>
+            @foreach($tracks as $t)
+                <option value="{{ $t->id }}" @selected(request('track') == $t->id)>{{ $t->name }}</option>
+            @endforeach
+        </select>
+        <select name="prodi" aria-label="Prodi">
+            <option value="">Semua prodi</option>
+            @foreach($prodis as $p)<option @selected(request('prodi') == $p)>{{ $p }}</option>@endforeach
+        </select>
+        <select name="tahun" aria-label="Tahun">
+            <option value="">Semua tahun</option>
+            @foreach($tahuns as $th)<option @selected(request('tahun') == $th)>{{ $th }}</option>@endforeach
+        </select>
+        <button>Cari</button>
+    </form>
+
+    <div class="fx-chips">
+        <a href="{{ request()->fullUrlWithQuery(['track' => null, 'page' => null]) }}" class="fx-chip {{ request('track') ? '' : 'on' }}">Semua</a>
+        @foreach($tracks as $t)
+            <a href="{{ request()->fullUrlWithQuery(['track' => $t->id, 'page' => null]) }}" class="fx-chip {{ request('track') == $t->id ? 'on' : '' }}">{{ $t->name }}</a>
+        @endforeach
+    </div>
+
+    <div class="fx-sec-head">
+        <h2>Karya Mahasiswa</h2>
+        <span>{{ $items->total() }} karya</span>
+    </div>
+
+    <div class="fx-grid">
+        @forelse($items as $k)
+            @php $poster = ($k->materials ?? [])['poster'] ?? null; @endphp
+            <a href="/karya/{{ $k->slug }}" class="fx-card" data-track="{{ $k->track->code }}">
+                <div class="fx-cover">
+                    @if($poster)
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($poster) }}" alt="{{ $k->title }}" loading="lazy">
+                    @else
+                        <span class="fx-init" aria-hidden="true">{{ \Illuminate\Support\Str::of($k->title)->explode(' ')->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->join('') }}</span>
+                    @endif
+                    @if($k->demoUrl())<span class="fx-live"><b></b>Demo online</span>@endif
+                </div>
+                <div class="fx-body">
+                    <span class="fx-tag">{{ $k->track->name }}</span>
+                    <h3>{{ $k->title }}</h3>
+                    <p class="fx-desc">{{ \Illuminate\Support\Str::limit(strip_tags($k->problem ?: $k->abstract), 200) }}</p>
+                    <span class="fx-more">Lihat karya <em>→</em></span>
+                </div>
+            </a>
+        @empty
+            <div class="fx-empty">Belum ada karya yang cocok dengan pencarian Anda.</div>
+        @endforelse
+    </div>
+
+    @if($items->hasPages())<div style="padding-bottom:60px">{{ $items->links() }}</div>@endif
+</main>
+
+<footer class="fx-foot">
+    <div class="fx-wrap">
+        <span><strong>FASINOVA</strong> · Fasilkom Innovation Showcase</span>
+        <span>© {{ date('Y') }} Fakultas Ilmu Komputer, Universitas Esa Unggul</span>
+    </div>
+</footer>
 @endsection
