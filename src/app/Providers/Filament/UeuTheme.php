@@ -6,7 +6,8 @@ use Filament\Panel;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
 
-/** Tema Universitas Esa Unggul untuk ketiga panel (admin/PIC, dosen, mahasiswa): satu tempat, sama dengan situs publik. */
+/** Panggil setelah ->id(): ->widgets() membaca cache komponen per id panel (php artisan optimize).
+ * Tema Universitas Esa Unggul untuk ketiga panel (admin/PIC, dosen, mahasiswa): satu tempat, sama dengan situs publik. */
 class UeuTheme
 {
     public static function apply(Panel $panel): Panel

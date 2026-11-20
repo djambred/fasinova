@@ -20,7 +20,7 @@ class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return UeuTheme::apply($panel)->id("app")->path("app")->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
+        return UeuTheme::apply($panel->id("app"))->path("app")->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
             ->favicon(asset('icon.svg'))->brandName('FASINOVA · Mahasiswa')
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->pages([Dashboard::class])->widgets([\App\Filament\App\Widgets\MyStats::class, \App\Filament\App\Widgets\MyInnovations::class])

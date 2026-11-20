@@ -21,7 +21,7 @@ class DosenPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return UeuTheme::apply($panel)->id('dosen')->path('dosen')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
+        return UeuTheme::apply($panel->id('dosen'))->path('dosen')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
             ->favicon(asset('icon.svg'))->brandName('FASINOVA · Dosen')
             ->sidebarCollapsibleOnDesktop()
             ->userMenuItems([\Filament\Navigation\MenuItem::make()->label('Panel PIC (pemeriksaan)')->url('/admin')->icon('heroicon-o-clipboard-document-check')])

@@ -21,7 +21,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return UeuTheme::apply($panel)->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()
+        return UeuTheme::apply($panel->id('admin'))->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()
             ->userMenuItems([
                 \Filament\Navigation\MenuItem::make('dosen')->label('Dasbor Dosen')->url('/dosen')->icon('heroicon-o-academic-cap')
                     ->visible(fn () => in_array(auth()->user()?->role, ['dosen', 'pic', 'admin'])),
