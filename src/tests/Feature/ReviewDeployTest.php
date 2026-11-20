@@ -183,13 +183,15 @@ class ReviewDeployTest extends TestCase
         $dep = $i->deployment;
         $dep->update(['stack' => 'laravel', 'status' => 'building']);
         $dep->logs()->create(['step' => 'building', 'stream' => 'out', 'line' => 'x']);
-        Livewire::test(ListDeployments::class)->callTableAction('redeploy', $dep);
-        $this->assertSame('building', $dep->fresh()->status);     // dulu tertimpa 'queued' padahal sedang building
+        Livewire::test(ListDeployments::class)->assertTableActionDisabled('redeploy', $dep)->callTableAction('redeploy', $dep);
+        $this->assertSame('building', $dep->fresh()->status);
         $this->assertSame(1, $dep->logs()->count());
-        Queue::assertPushed(RunnerJob::class, 1);                 // deploy berikutnya tetap masuk antrean
+        Queue::assertNothingPushed();                             // tombol mati selama deploy antre/berjalan
 
-        $dep->update(['status' => 'live']);
-        Livewire::test(ListDeployments::class)->callTableAction('redeploy', $dep);
+        $dep->update(['status' => 'live']);                       // live: redeploy tetap bisa (mis. setelah env diubah)
+        Livewire::test(ListDeployments::class)->assertTableActionEnabled('redeploy', $dep)->callTableAction('redeploy', $dep);
         $this->assertSame('queued', $dep->fresh()->status);
+        Queue::assertPushed(RunnerJob::class, 1);
+        Livewire::test(ListDeployments::class)->assertTableActionDisabled('redeploy', $dep);   // klik kedua tidak mungkin
     }
 }

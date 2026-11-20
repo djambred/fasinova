@@ -76,9 +76,9 @@ class DeploymentResource extends Resource
         return Action::make($name)->authorize('update')->label($label)->icon($icon)->color($danger ? 'danger' : 'gray')->requiresConfirmation()
             // Deploy hanya untuk karya yang sudah disetujui PIC (SHA terkunci); sebelum itu aksi ini tidak ada artinya dan hanya membuat status "gagal".
             ->visible(fn (?Deployment $record) => $action === 'remove' || filled($record?->innovation?->repository?->locked_commit_sha))
+            ->disabled(fn (?Deployment $record) => $action === 'deploy' && (bool) $record?->isBusy())
             ->action(function (Deployment $record) use ($action, $name) {
-                // Deploy yang sedang berjalan tetap tampil dengan langkahnya; deploy baru menunggu di antrean di belakangnya.
-                if ($action === 'deploy' && ! $record->isRunning()) $record->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
+                if ($action === 'deploy') $record->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
                 RunnerJob::dispatch($record->id, $action);
                 AuditLog::record("deploy.$name", $record->innovation_id, ['subdomain' => $record->subdomain]);
                 Notification::make()->title("$name dijadwalkan")->success()->send();

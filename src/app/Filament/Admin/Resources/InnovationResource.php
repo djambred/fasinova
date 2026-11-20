@@ -169,7 +169,7 @@ class InnovationResource extends Resource
         return Action::make('deploy')->authorize('deploy')->label(fn (Innovation $record) => $record->deployment?->status === 'live' ? 'Redeploy' : 'Deploy')->icon('heroicon-o-rocket-launch')
             ->visible(fn (Innovation $record) => $record->isDeployable() && in_array($record->status, ['approved', 'published']))
             ->disabled(fn (Innovation $record) => ($record->track->code === 'cs' && ! $record->safe_service_ok)
-                || in_array($record->deployment?->status, ['queued', 'cloning', 'scanning', 'building', 'starting', 'health_check']))
+                || (bool) $record->deployment?->isBusy())
             ->fillForm(fn (Innovation $record) => ['subdomain' => $record->deployment->subdomain, 'public_service' => $record->deployment->public_service,
                 'internal_port' => $record->deployment->internal_port ?: $record->track->default_port, 'health_path' => $record->deployment->health_path])
             ->schema(fn (Innovation $record) => [

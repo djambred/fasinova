@@ -27,6 +27,12 @@ class Deployment extends Model
         return in_array($this->status, ['cloning', 'scanning', 'building', 'starting', 'health_check'], true);
     }
 
+    /** Sudah ada deploy di antrean atau sedang berjalan: tombol (Re)deploy dimatikan. */
+    public function isBusy(): bool
+    {
+        return $this->status === 'queued' || $this->isRunning();
+    }
+
     public function project(): string { return 'fz-'.$this->innovation->slug; }
     public function dir(): string { return rtrim(config('fasinova.apps_dir'), '/').'/'.$this->innovation->slug; }
 }
