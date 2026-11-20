@@ -62,3 +62,10 @@ a.fi-wi-stats-overview-stat:hover,.fi-wi-stats-overview-stat:hover{transform:tra
 .dark .fi-sidebar,.dark .fx-flow{background:#111827;border-color:#1f2937}
 .dark .fx-step{color:#e5e7eb}.dark .fx-step:hover{background:#1a2336}
 .dark .fi-wi-stats-overview-stat-value{color:#fff}
+
+/* Logo topbar: logo UEU putih + nama panel */
+.fx-brand-panel{display:inline-flex;align-items:center;gap:12px;white-space:nowrap}
+.fx-brand-panel img{height:32px;width:auto;display:block}
+.fx-brand-sep{width:1px;height:26px;background:rgba(255,255,255,.4)}
+.fx-brand-name{font-size:16px;font-weight:700;letter-spacing:.02em;color:#fff}
+@media (max-width:640px){.fx-brand-sep,.fx-brand-name{display:none}}

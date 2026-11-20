@@ -112,7 +112,7 @@ class ActionSmokeTest extends TestCase
             Filament::setCurrentPanel($panel);
             $this->actingAs($this->users[$role]);
             $this->flushSession();   // ganti pengguna = sesi baru (AuthenticateSession menolak sesi milik pengguna lain)
-            $this->get("/$panel")->assertOk()->assertSee('css/fasinova-admin.css');
+            $this->get("/$panel")->assertOk()->assertSee('css/fasinova-admin.css')->assertSee('img/logo-ueu-putih.png');
             Livewire::test(\App\Filament\Widgets\PanduanAlur::class)->assertOk()->assertSee('fx-welcome')->assertSee($this->users[$role]->name);
         }
         Filament::setCurrentPanel('admin');

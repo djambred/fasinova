@@ -15,6 +15,7 @@ class UeuTheme
         return $panel
             ->colors(['primary' => Color::hex('#0266AF'), 'warning' => Color::hex('#F37021'), 'danger' => Color::Rose, 'success' => Color::Emerald, 'gray' => Color::Slate])
             ->font('Poppins')
+            ->brandLogo(fn () => view('filament.brand'))->brandLogoHeight('2rem')
             ->widgets([\App\Filament\Widgets\PanduanAlur::class])
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => '<link rel="stylesheet" href="'.e(asset('css/fasinova-admin.css').'?v='.filemtime(public_path('css/fasinova-admin.css'))).'">');
     }
