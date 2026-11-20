@@ -80,6 +80,8 @@ class ActionSmokeTest extends TestCase
             'admin: audit' => ['admin', 'admin', Resources\AuditLogResource\Pages\ListAuditLogs::class],
             'mahasiswa: karya saya' => ['app', 'mahasiswa', AppPages\ListInnovations::class],
             'dosen: bimbingan' => ['dosen', 'dosen', ListBimbingan::class],
+            'mahasiswa: inquiry' => ['app', 'mahasiswa', \App\Filament\App\Resources\InquiryResource\Pages\ListInquiries::class],
+            'dosen: inquiry' => ['dosen', 'dosen', \App\Filament\Dosen\Resources\InquiryResource\Pages\ListInquiries::class],
         ];
     }
 
@@ -123,6 +125,26 @@ class ActionSmokeTest extends TestCase
         $this->actingAs($this->users['mahasiswa']);
         Livewire::test(\App\Filament\Widgets\PanduanAlur::class)->assertSeeInOrder(['Draf', '1', 'Menunggu PIC', '1', 'Perlu perbaikan', '1', 'Terbit', '1', 'Demo live', '1'])
             ->assertSee('Perlu tindakan Anda');   // draf + revisi menunggu mahasiswa sendiri
+    }
+
+    /** Inquiry: mahasiswa & dosen hanya melihat karya sendiri/bimbingan; di panel admin tetap khusus admin. */
+    public function test_inquiries_are_scoped_per_panel_and_admin_panel_stays_admin_only(): void
+    {
+        $other = Innovation::create(['title' => 'Lain', 'track_id' => Track::first()->id, 'owner_id' => $this->users['pic']->id, 'status' => 'published']);
+        Inquiry::create(['innovation_id' => $other->id, 'name' => 'Orang Lain', 'email' => 'o@x.test', 'message' => 'Bukan milikmu']);
+
+        foreach (['mahasiswa' => [\App\Filament\App\Resources\InquiryResource\Pages\ListInquiries::class, 'app'],
+                  'dosen' => [\App\Filament\Dosen\Resources\InquiryResource\Pages\ListInquiries::class, 'dosen']] as $role => [$page, $panel]) {
+            Filament::setCurrentPanel($panel);
+            $this->actingAs($this->users[$role]);
+            Livewire::test($page)->assertOk()->assertSee('Mitra')->assertDontSee('Orang Lain')->assertTableActionExists('balas')
+                ->assertTableActionHasUrl('balas', 'mailto:mitra@x.test?subject=Kolaborasi%3A%20Terbit', Inquiry::where('name', 'Mitra')->first());
+        }
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($this->users['dosen']);
+        Livewire::test(Resources\InquiryResource\Pages\ListInquiries::class)->assertForbidden();
+        $this->actingAs($this->users['admin']);
+        Livewire::test(Resources\InquiryResource\Pages\ListInquiries::class)->assertOk()->assertSee('Orang Lain');
     }
 
     /** Wizard mahasiswa: setiap tombol header di halaman ubah, untuk tiap status karya. */

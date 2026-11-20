@@ -116,6 +116,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | MHS-07 | Kirim paket: wajib persetujuan pembimbing (dosen menyetujui di panelnya setelah menerima notifikasi dalam aplikasi) dan bentuk karya dipilih, abstrak, poster, kartu hasil terisi, dan **TOS persetujuan publikasi dicentang**; untuk Aplikasi web, validasi repo lolos serta stack dan subdomain terisi; untuk Cyber Security wajib unggah `ETIKA.md` bertanda tangan | M |
 | MHS-08 | Lihat status, catatan PIC per item checklist, dan hitung mundur tenggat perbaikan 7 hari | M |
 | MHS-09 | Lihat status deploy dan URL demo setelah terbit (log build hanya untuk admin/PIC) | S |
+| MHS-10 | Lihat **inquiry kolaborasi** untuk karya sendiri (baca saja) dan balas lewat email; tim mendapat notifikasi dalam aplikasi saat inquiry masuk. Dosen pembimbing melihat inquiry karya bimbingannya (dan lingkup kaprodi/dekan) dengan cara yang sama | S |
 
 ### 5.2 Panel PIC & admin `/admin` (Filament)
 
@@ -131,7 +132,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | ADM-02 | Pengaturan deploy: rentang port lokal, domain, kuota default per karya, cadangan sumber daya FASINOVA (tidak ada token/rahasia di pengaturan) | M |
 | ADM-03 | Impor peserta TA (CSV: NIM, nama, prodi, peminatan, pembimbing), pengguna & peran | M |
 | ADM-04 | Dashboard: paket per status per peminatan, karya terlambat diperbaiki, deploy gagal, pemakaian CPU/RAM runner | S |
-| ADM-05 | Inquiry kolaborasi: status, penanggung jawab, catatan | M |
+| ADM-05 | Inquiry kolaborasi: status, penanggung jawab, catatan. Hanya admin yang mengelola; tim karya & pembimbing melihatnya di panel masing-masing (MHS-10) | M |
 | ADM-06 | Log audit: siapa menyetujui, deploy, mengubah env, kapan | M |
 
 ### 5.3 Situs publik

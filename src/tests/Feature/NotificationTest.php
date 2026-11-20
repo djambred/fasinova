@@ -66,7 +66,7 @@ class NotificationTest extends TestCase
 
     public function test_pics_fall_back_to_admin_and_inquiry_notifies_admin(): void
     {
-        [$i, , , , $pic] = $this->fixture();
+        [$i, $owner, $member, $sup, $pic] = $this->fixture();
         $pics = Notify::pics($i);
         $this->assertTrue($pics->contains($pic));                          // PIC peminatan
         $this->assertTrue($pics->contains($i->supervisor));                // pembimbing ikut sebagai PIC lingkup karya
@@ -77,6 +77,11 @@ class NotificationTest extends TestCase
         $i->update(['status' => 'published', 'slug' => 'karya-a']);
         $this->post('/karya/karya-a/kolaborasi', ['name' => 'Budi', 'email' => 'b@x.co', 'message' => 'hai', 'pdp' => 1])->assertRedirect();
         $this->assertSame(1, $this->got(User::where('role', 'admin')->first(), 'Inquiry kolaborasi baru'));
+        foreach ([$owner, $member] as $u) $this->assertSame(1, $this->got($u, 'tertarik dengan karya Anda'), 'tim');   // tim karya ikut tahu
+        $this->assertSame(0, $this->got($sup, 'mitra tertarik'));          // pembimbing sudah dilepas dari karya ini di atas
+        $i->update(['supervisor_id' => $sup->id]);
+        $this->post('/karya/karya-a/kolaborasi', ['name' => 'Sari', 'email' => 's@x.co', 'message' => 'halo', 'pdp' => 1])->assertRedirect();
+        $this->assertSame(1, $this->got($sup, 'tertarik dengan karya bimbingan Anda'));
     }
 
     public function test_overdue_command_notifies_once_in_window(): void

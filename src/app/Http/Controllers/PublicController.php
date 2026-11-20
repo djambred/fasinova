@@ -49,6 +49,9 @@ class PublicController extends Controller
         }
         $inq = $i->inquiries()->create(collect($d)->except('pdp')->all());
         \App\Support\Notify::users(\App\Support\Notify::admins(), 'Inquiry kolaborasi baru', "{$inq->name} — {$i->title}", '/admin/inquiries', 'info');
+        // Tim karya & pembimbing ikut tahu (lihat & balas dari panel masing-masing); admin tetap mengelola statusnya.
+        \App\Support\Notify::users(\App\Support\Notify::team($i), 'Ada mitra tertarik dengan karya Anda', "{$inq->name} — {$i->title}", '/app/inquiries', 'success');
+        \App\Support\Notify::users([$i->supervisor], 'Ada mitra tertarik dengan karya bimbingan Anda', "{$inq->name} — {$i->title}", '/dosen/inquiries', 'success');
         return back()->with('ok', 'Terima kasih, pesan Anda terkirim. Kami membalas dalam 5 hari kerja.');
     }
 
