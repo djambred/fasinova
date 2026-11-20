@@ -21,6 +21,12 @@ class Deployment extends Model
     public function logs() { return $this->hasMany(DeploymentLog::class); }
     public function history() { return $this->hasMany(DeployHistory::class); }
 
+    /** Deploy sedang dikerjakan worker (bukan sekadar menunggu antrean). */
+    public function isRunning(): bool
+    {
+        return in_array($this->status, ['cloning', 'scanning', 'building', 'starting', 'health_check'], true);
+    }
+
     public function project(): string { return 'fz-'.$this->innovation->slug; }
     public function dir(): string { return rtrim(config('fasinova.apps_dir'), '/').'/'.$this->innovation->slug; }
 }

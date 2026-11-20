@@ -141,8 +141,10 @@ class InnovationResource extends Resource
             || ($record->track->code === 'cs' && ! $record->safe_service_ok)) {
             return false;
         }
-        $d->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
-        $d->logs()->delete();
+        if (! $d->isRunning()) {   // jangan timpa status & hapus log deploy yang sedang berjalan
+            $d->update(['status' => 'queued', 'triggered_by' => auth()->id()]);
+            $d->logs()->delete();
+        }
         RunnerJob::dispatch($d->id, 'deploy');
         AuditLog::record('deploy.auto', $record->id, ['subdomain' => $d->subdomain, 'sha' => $record->repository->locked_commit_sha]);
         return true;

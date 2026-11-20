@@ -174,4 +174,22 @@ class ReviewDeployTest extends TestCase
         $i->repository->update(['locked_commit_sha' => 'abc123']);
         Livewire::test(ListDeployments::class)->assertTableActionVisible('redeploy', $dep);
     }
+
+    public function test_redeploy_during_running_deploy_keeps_its_status_and_logs(): void
+    {
+        Queue::fake();
+        $i = $this->setUpInnovation();
+        $i->repository->update(['locked_commit_sha' => 'abc123']);
+        $dep = $i->deployment;
+        $dep->update(['stack' => 'laravel', 'status' => 'building']);
+        $dep->logs()->create(['step' => 'building', 'stream' => 'out', 'line' => 'x']);
+        Livewire::test(ListDeployments::class)->callTableAction('redeploy', $dep);
+        $this->assertSame('building', $dep->fresh()->status);     // dulu tertimpa 'queued' padahal sedang building
+        $this->assertSame(1, $dep->logs()->count());
+        Queue::assertPushed(RunnerJob::class, 1);                 // deploy berikutnya tetap masuk antrean
+
+        $dep->update(['status' => 'live']);
+        Livewire::test(ListDeployments::class)->callTableAction('redeploy', $dep);
+        $this->assertSame('queued', $dep->fresh()->status);
+    }
 }
