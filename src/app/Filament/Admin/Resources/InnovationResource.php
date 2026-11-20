@@ -53,7 +53,8 @@ class InnovationResource extends Resource
         return $table->defaultSort('updated_at', 'desc')->columns([
             TextColumn::make('title')->searchable()->wrap(),
             TextColumn::make('track.name')->label('Peminatan'),
-            TextColumn::make('owner.name')->label('Ketua'),
+            TextColumn::make('owner.name')->label('Ketua')->description(fn (Innovation $record) => $record->owner?->nim)->searchable(['name', 'nim']),
+            TextColumn::make('supervisor.name')->label('Pembimbing')->searchable()->toggleable(),
             TextColumn::make('status')->badge()->color(fn ($state) => match ($state) {
                 'submitted' => 'warning', 'needs_revision' => 'danger', 'approved' => 'info', 'published' => 'success', default => 'gray',
             })->formatStateUsing(fn ($state, Innovation $record) => $record->isOverdue() ? 'terlambat' : $state),

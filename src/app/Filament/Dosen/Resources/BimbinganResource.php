@@ -43,8 +43,9 @@ class BimbinganResource extends Resource
     {
         return $table->defaultSort('updated_at', 'desc')->columns([
             TextColumn::make('title')->label('Judul')->searchable()->wrap(),
-            TextColumn::make('owner.name')->label('Ketua'),
-            TextColumn::make('owner.nim')->label('NIM'),
+            TextColumn::make('owner.name')->label('Ketua')->searchable(),
+            TextColumn::make('owner.nim')->label('NIM')->searchable(),
+            TextColumn::make('supervisor.name')->label('Pembimbing')->searchable()->toggleable(),
             TextColumn::make('track.name')->label('Peminatan'),
             TextColumn::make('status')->badge()->formatStateUsing(fn ($state, Innovation $record) => $record->statusLabel())->color(fn ($state, Innovation $record) => $record->statusColor()),
             IconColumn::make('supervisor_approved_at')->label('Disetujui saya')->boolean()

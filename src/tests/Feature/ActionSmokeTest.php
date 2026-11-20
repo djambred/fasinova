@@ -147,6 +147,29 @@ class ActionSmokeTest extends TestCase
         Livewire::test(Resources\InquiryResource\Pages\ListInquiries::class)->assertOk()->assertSee('Orang Lain');
     }
 
+    /** Kotak Cari di tabel panel menemukan karya lewat nama/NIM ketua dan nama pembimbing, bukan hanya judul. */
+    public function test_panel_tables_search_by_student_and_supervisor(): void
+    {
+        $other = Innovation::create(['title' => 'Karya Lain', 'track_id' => Track::where('code', 'fullstack')->value('id'), 'owner_id' => $this->users['pic']->id, 'status' => 'submitted']);
+        $mine = Innovation::where('owner_id', $this->users['mahasiswa']->id)->where('status', '!=', 'draft')->get();
+        $sup = $this->users['dosen']->name;
+
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($this->users['admin']);
+        foreach (['Mhs', $sup] as $q) {
+            Livewire::test(Resources\InnovationResource\Pages\ListInnovations::class)->searchTable($q)
+                ->assertCanSeeTableRecords($mine)->assertCanNotSeeTableRecords([$other]);
+        }
+        Livewire::test(Resources\DeploymentResource\Pages\ListDeployments::class)->searchTable('Terbit')
+            ->assertCanSeeTableRecords([Innovation::where('title', 'Terbit')->first()->deployment]);
+
+        Filament::setCurrentPanel('dosen');
+        $this->actingAs($this->users['dosen']);
+        foreach (['mhs', $sup] as $q) {
+            Livewire::test(ListBimbingan::class)->searchTable($q)->assertCanSeeTableRecords(Innovation::where('owner_id', $this->users['mahasiswa']->id)->get());
+        }
+    }
+
     /** Wizard mahasiswa: setiap tombol header di halaman ubah, untuk tiap status karya. */
     public function test_every_wizard_header_action_opens_for_every_status(): void
     {
