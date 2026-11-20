@@ -112,4 +112,14 @@ class DeployerSafetyTest extends TestCase
         $this->assertNotEmpty((new HealthSweep)->middleware());
         $this->assertNotEmpty((new \App\Jobs\RunnerJob(1, 'stop'))->middleware());
     }
+
+    public function test_duplicate_deploy_for_same_stack_is_queued_once(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        \App\Jobs\RunnerJob::dispatch(1, 'deploy');
+        \App\Jobs\RunnerJob::dispatch(1, 'deploy');   // approve + redeploy manual / klik ganda
+        \App\Jobs\RunnerJob::dispatch(1, 'stop');     // aksi lain tetap masuk
+        \App\Jobs\RunnerJob::dispatch(2, 'deploy');   // stack lain tetap masuk
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RunnerJob::class, 3);
+    }
 }
