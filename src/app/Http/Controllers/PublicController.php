@@ -12,7 +12,14 @@ class PublicController extends Controller
     public function home(Request $r)
     {
         $items = Innovation::with('track', 'deployment')->where('status', 'published')
-            ->when($r->q, fn ($q, $v) => $q->where(fn ($w) => $w->where('title', 'ilike', "%$v%")->orWhere('problem', 'ilike', "%$v%")))
+            // Sesuai placeholder "karya, teknologi, atau tim": judul/isi, ketua (nama/NIM), anggota, pembimbing, peminatan, stack.
+            ->when(trim((string) $r->q), fn ($q, $v) => $q->where(fn ($w) => $w
+                ->whereLike('title', "%$v%")->orWhereLike('problem', "%$v%")->orWhereLike('abstract', "%$v%")
+                ->orWhereRaw('lower(cast(members as text)) like ?', ['%'.mb_strtolower($v).'%'])   // jsonb: cast agar jalan di PostgreSQL & SQLite
+                ->orWhereHas('owner', fn ($u) => $u->whereLike('name', "%$v%")->orWhereLike('nim', "%$v%"))
+                ->orWhereHas('supervisor', fn ($u) => $u->whereLike('name', "%$v%"))
+                ->orWhereHas('track', fn ($t) => $t->whereLike('name', "%$v%"))
+                ->orWhereHas('deployment', fn ($d) => $d->whereLike('stack', "%$v%"))))
             ->when($r->track, fn ($q, $v) => $q->where('track_id', $v))
             ->when($r->prodi, fn ($q, $v) => $q->where('study_program', $v))
             ->when($r->tahun, fn ($q, $v) => $q->where('academic_period', $v))

@@ -42,6 +42,18 @@ class PublicSiteTest extends TestCase
         $this->get('/karya/deteksi-hoaks')->assertNotFound();
     }
 
+    public function test_search_finds_by_title_team_supervisor_and_track(): void
+    {
+        $i = $this->make('published');
+        $sup = User::create(['name' => 'Jefry Pembimbing', 'email' => 'j@x.test', 'password' => 'pw', 'role' => 'dosen']);
+        $i->owner->update(['name' => 'Thifaal', 'nim' => '2021001']);
+        $i->update(['supervisor_id' => $sup->id, 'members' => [['nim' => '2', 'name' => 'Budi Anggota']]]);
+        foreach (['hoaks', 'THIFAAL', '2021001', 'budi', 'jefry', 'eksperimen'] as $q) {
+            $this->get('/?q='.urlencode($q))->assertOk()->assertSee('Deteksi Hoaks');
+        }
+        $this->get('/?q=tidakada')->assertOk()->assertDontSee('Deteksi Hoaks')->assertSee('Belum ada karya yang cocok');
+    }
+
     public function test_inquiry_rate_limited_after_3(): void
     {
         $this->make('published');
