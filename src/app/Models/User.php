@@ -40,6 +40,8 @@ class User extends Authenticatable implements FilamentUser
 
     public function program() { return $this->belongsTo(StudyProgram::class, 'study_program_id'); }
     public function supervised() { return $this->hasMany(Innovation::class, 'supervisor_id'); }
+    public function headOf() { return $this->hasMany(StudyProgram::class, 'head_id'); }
+    public function deanOf() { return $this->hasMany(Faculty::class, 'dean_id'); }
 
     /** Profil publik dosen: /pembimbing/{id}-{nama}. */
     public function profileKey(): string { return $this->id.'-'.\Illuminate\Support\Str::slug($this->name); }
@@ -48,9 +50,10 @@ class User extends Authenticatable implements FilamentUser
     /** Jabatan struktural: Dekan / Kaprodi (dari pengaturan Fakultas & Program Studi). */
     public function jabatan(): ?string
     {
+        // is_dekan / is_kaprodi diisi withExists() di daftar dosen; selain itu dihitung langsung.
         return collect([
-            Faculty::where('dean_id', $this->id)->exists() ? 'Dekan' : null,
-            StudyProgram::where('head_id', $this->id)->exists() ? 'Kaprodi' : null,
+            ($this->is_dekan ?? Faculty::where('dean_id', $this->id)->exists()) ? 'Dekan' : null,
+            ($this->is_kaprodi ?? StudyProgram::where('head_id', $this->id)->exists()) ? 'Kaprodi' : null,
         ])->filter()->implode(', ') ?: null;
     }
 

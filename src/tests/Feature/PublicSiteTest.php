@@ -72,6 +72,38 @@ class PublicSiteTest extends TestCase
         $this->get('/')->assertSee('href="/pembimbing"', false);
     }
 
+    public function test_many_karya_paginate_with_themed_pager_and_keep_filters(): void
+    {
+        $i = $this->make('published');
+        $sup = User::create(['name' => 'Jefry Pembimbing', 'email' => 'j@x.test', 'password' => 'pw', 'role' => 'dosen']);
+        $i->update(['supervisor_id' => $sup->id]);
+        foreach (range(1, 14) as $n) {   // total 15 karya terbit
+            \App\Models\Innovation::create(['title' => "Karya Banyak $n", 'track_id' => $i->track_id, 'owner_id' => $i->owner_id,
+                'supervisor_id' => $sup->id, 'status' => 'published', 'published_at' => now()->subMinutes($n)]);
+        }
+        $count = fn ($res) => substr_count($res->getContent(), 'class="fx-card"');
+
+        $p1 = $this->get('/?q=karya');
+        $p1->assertOk()->assertSee('fx-pager')->assertSee('Menampilkan 1–12 dari 14')->assertSee('q=karya&amp;page=2#karya', false);
+        $this->assertSame(12, $count($p1));
+        $this->assertSame(2, $count($this->get('/?q=karya&page=2')));
+
+        $prof = $this->get($sup->profileUrl());
+        $prof->assertOk()->assertSee('15 karya')->assertSee('Menampilkan 1–12 dari 15');
+        $this->assertSame(12, $count($prof));
+        $this->assertSame(3, $count($this->get($sup->profileUrl().'?page=2')));
+        $this->get('/')->assertSee('Menampilkan 1–12 dari 15');
+    }
+
+    public function test_lecturer_list_query_count_does_not_grow_per_lecturer(): void
+    {
+        $this->make('published');
+        $q = function () { \DB::flushQueryLog(); \DB::enableQueryLog(); $this->get('/pembimbing')->assertOk(); return count(\DB::getQueryLog()); };
+        $base = $q();
+        foreach (range(1, 10) as $n) User::create(['name' => "Dosen $n", 'email' => "d$n@x.test", 'password' => 'pw', 'role' => 'dosen']);
+        $this->assertLessThanOrEqual($base + 2, $q());   // dulu +2 query per dosen untuk jabatan
+    }
+
     public function test_inquiry_rate_limited_after_3(): void
     {
         $this->make('published');

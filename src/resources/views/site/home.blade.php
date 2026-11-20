@@ -44,7 +44,7 @@
         @endforeach
     </div>
 
-    <div class="fx-sec-head">
+    <div class="fx-sec-head" id="karya">
         <h2>Karya Mahasiswa</h2>
         <span>{{ $items->total() }} karya</span>
     </div>
@@ -57,5 +57,5 @@
         @endforelse
     </div>
 
-    @if($items->hasPages())<div style="padding-bottom:60px">{{ $items->links() }}</div>@endif
+    {{ $items->links('site.pagination') }}
 @endsection

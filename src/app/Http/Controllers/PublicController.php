@@ -26,7 +26,7 @@ class PublicController extends Controller
             ->when($r->track, fn ($q, $v) => $q->where('track_id', $v))
             ->when($r->prodi, fn ($q, $v) => $q->where('study_program', $v))
             ->when($r->tahun, fn ($q, $v) => $q->where('academic_period', $v))
-            ->latest('published_at')->paginate(12)->withQueryString();
+            ->latest('published_at')->paginate(12)->withQueryString()->fragment('karya');
 
         $pub = Innovation::where('status', 'published');
         return view('site.home', [
@@ -42,20 +42,21 @@ class PublicController extends Controller
     private function lecturers()
     {
         return User::whereIn('role', ['dosen', 'pic'])->with('program', 'tracksAsPic')
+            ->withExists(['headOf as is_kaprodi', 'deanOf as is_dekan'])   // jabatan tanpa 2 query per kartu
             ->withCount(['supervised as karya_count' => fn ($q) => $q->where('status', 'published')])
             ->addSelect(['mahasiswa_count' => Innovation::selectRaw('count(distinct owner_id)')->whereColumn('supervisor_id', 'users.id')->where('status', 'published')]);
     }
 
     public function lecturerIndex()
     {
-        return view('site.lecturers', ['lecturers' => $this->lecturers()->orderByDesc('karya_count')->orderBy('name')->get()]);
+        return view('site.lecturers', ['lecturers' => $this->lecturers()->orderByDesc('karya_count')->orderBy('name')->paginate(24)]);
     }
 
     public function lecturer(string $key)
     {
         $u = $this->lecturers()->findOrFail((int) $key);
         if ($key !== $u->profileKey()) return redirect($u->profileUrl(), 301);   // URL kanonik /pembimbing/{id}-{nama}
-        $items = Innovation::with('track', 'deployment', 'owner')->where('status', 'published')->where('supervisor_id', $u->id)->latest('published_at')->get();
+        $items = Innovation::with('track', 'deployment', 'owner')->where('status', 'published')->where('supervisor_id', $u->id)->latest('published_at')->paginate(12)->fragment('karya');
         return view('site.lecturer', ['u' => $u, 'items' => $items]);
     }
 

@@ -57,7 +57,7 @@
 .fx-chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
 
 /* Judul seksi */
-.fx-sec-head{display:flex;align-items:end;justify-content:space-between;margin:40px 0 20px}
+.fx-sec-head{scroll-margin-top:96px;display:flex;align-items:end;justify-content:space-between;margin:40px 0 20px}
 .fx-sec-head h2{font-size:24px;font-weight:700;margin:0;padding-left:14px;border-left:5px solid var(--orange);line-height:1.2}
 .fx-sec-head span{color:var(--mute);font-size:14px}
 
@@ -151,6 +151,17 @@
 .fx-form select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(2,102,175,.15)}
 .fx-hint{margin:-4px 0 0;font-size:12px;color:var(--mute)}
 @media (max-width:560px){.fx-grid2{grid-template-columns:1fr}}
+/* Paginasi */
+.fx-pager{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:0 0 64px;margin-top:-40px}
+.fx-pager-info{font-size:13px;color:var(--mute)}
+.fx-pager-links{display:flex;flex-wrap:wrap;gap:6px}
+.fx .fx-pg{display:inline-grid;place-items:center;min-width:40px;height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:600;color:var(--ink2);transition:all .15s}
+.fx a.fx-pg:hover{border-color:var(--blue);color:var(--blue)}
+.fx-pg.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.fx-pg.off{opacity:.45;cursor:not-allowed}
+.fx-pg.gap{border:0;background:none;min-width:auto}
+@media (max-width:640px){.fx-pager{justify-content:center}.fx-pg.num{display:none}}
+
 /* Profil dosen */
 .fx-teamline{display:block;font-size:12.5px;font-weight:500;color:var(--blue);margin:-2px 0 6px}
 .fx-lect-grid{position:relative;z-index:5;margin-top:-56px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;padding-bottom:72px}

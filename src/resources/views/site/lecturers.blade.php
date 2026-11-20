@@ -19,4 +19,5 @@
         <div class="fx-empty">Belum ada data dosen.</div>
     @endforelse
 </div>
+{{ $lecturers->links('site.pagination') }}
 @endsection

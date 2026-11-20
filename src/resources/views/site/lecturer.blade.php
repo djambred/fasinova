@@ -26,9 +26,9 @@
 </section>
 @endsection
 @section('content')
-<div class="fx-sec-head" style="margin-top:56px">
+<div class="fx-sec-head" id="karya" style="margin-top:56px">
     <h2>Karya tim bimbingan</h2>
-    <span>{{ $items->count() }} karya</span>
+    <span>{{ $items->total() }} karya</span>
 </div>
 <div class="fx-grid">
     @forelse($items as $k)
@@ -37,4 +37,5 @@
         <div class="fx-empty">Belum ada karya bimbingan yang terbit.</div>
     @endforelse
 </div>
+{{ $items->links('site.pagination') }}
 @endsection
