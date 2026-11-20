@@ -39,6 +39,11 @@ class User extends Authenticatable implements FilamentUser
     }
 
     public function program() { return $this->belongsTo(StudyProgram::class, 'study_program_id'); }
+    public function supervised() { return $this->hasMany(Innovation::class, 'supervisor_id'); }
+
+    /** Profil publik dosen: /pembimbing/{id}-{nama}. */
+    public function profileKey(): string { return $this->id.'-'.\Illuminate\Support\Str::slug($this->name); }
+    public function profileUrl(): string { return '/pembimbing/'.$this->profileKey(); }
 
     /** Jabatan struktural: Dekan / Kaprodi (dari pengaturan Fakultas & Program Studi). */
     public function jabatan(): ?string

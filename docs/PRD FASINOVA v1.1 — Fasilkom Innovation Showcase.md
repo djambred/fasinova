@@ -143,6 +143,7 @@ Prioritas: **M** wajib v1.1, **S** sebaiknya, **C** bisa ditunda.
 | PUB-02 | Detail karya: bentuk karya, masalah & solusi awam, abstrak, HKI, **link jurnal (bila ada)**, video, tombol **"Coba demo"** ke subdomain (bila ter-deploy dan sehat), kartu hasil, tim + pembimbing, poster, form kolaborasi | M |
 | PUB-03 | Tombol "Coba demo" otomatis disembunyikan bila health check gagal, diganti video | M |
 | PUB-04 | Form kolaborasi dengan persetujuan UU PDP, Turnstile, rate limit 3/10 menit per IP | M |
+| PUB-05 | **Profil dosen pembimbing** (`/pembimbing`, `/pembimbing/{id}-{nama}`): nama, jabatan (Dekan/Kaprodi), program studi, peminatan yang dibina sebagai PIC, jumlah karya terbit & mahasiswa, dan daftar karya terbit tim bimbingannya. Email/NIDN tidak ditampilkan; karya yang belum terbit tidak muncul. Nama pembimbing di detail karya tertaut ke profilnya | S |
 
 ## 6. Modul Deploy (konsep Portainer) dan subdomain
 

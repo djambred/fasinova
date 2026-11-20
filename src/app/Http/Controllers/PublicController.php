@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Innovation;
 use App\Models\Track;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class PublicController extends Controller
 {
     public function home(Request $r)
     {
-        $items = Innovation::with('track', 'deployment')->where('status', 'published')
+        $items = Innovation::with('track', 'deployment', 'owner')->where('status', 'published')
             // Sesuai placeholder "karya, teknologi, atau tim": judul/isi, ketua (nama/NIM), anggota, pembimbing, peminatan, stack.
             // % dan _ diketik pengguna dicari apa adanya, bukan wildcard (escape \ bawaan PostgreSQL).
             ->when(trim((string) $r->q), fn ($q, $v) => $q->where(function ($w) use ($v) {
@@ -35,6 +36,27 @@ class PublicController extends Controller
             'total' => (clone $pub)->count(),
             'live' => (clone $pub)->whereHas('deployment', fn ($q) => $q->where('status', 'live'))->count(),
         ]);
+    }
+
+    /** Dosen pembimbing (peran dosen/PIC) beserta jumlah karya terbit bimbingannya. Hanya data publik: nama, jabatan, prodi, peminatan. */
+    private function lecturers()
+    {
+        return User::whereIn('role', ['dosen', 'pic'])->with('program', 'tracksAsPic')
+            ->withCount(['supervised as karya_count' => fn ($q) => $q->where('status', 'published')])
+            ->addSelect(['mahasiswa_count' => Innovation::selectRaw('count(distinct owner_id)')->whereColumn('supervisor_id', 'users.id')->where('status', 'published')]);
+    }
+
+    public function lecturerIndex()
+    {
+        return view('site.lecturers', ['lecturers' => $this->lecturers()->orderByDesc('karya_count')->orderBy('name')->get()]);
+    }
+
+    public function lecturer(string $key)
+    {
+        $u = $this->lecturers()->findOrFail((int) $key);
+        if ($key !== $u->profileKey()) return redirect($u->profileUrl(), 301);   // URL kanonik /pembimbing/{id}-{nama}
+        $items = Innovation::with('track', 'deployment', 'owner')->where('status', 'published')->where('supervisor_id', $u->id)->latest('published_at')->get();
+        return view('site.lecturer', ['u' => $u, 'items' => $items]);
     }
 
     public function show(string $slug)

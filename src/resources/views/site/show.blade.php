@@ -61,7 +61,7 @@
     <div class="fx-panel fx-team"><h2>Tim</h2>
         <p>{{ $i->owner->name }} <small>Ketua</small></p>
         @foreach($i->members ?? [] as $mem)<p>{{ $mem['name'] }}</p>@endforeach
-        @if($i->supervisor)<h3>Pembimbing</h3><p>{{ $i->supervisor->name }}</p>@endif
+        @if($i->supervisor)<h3>Pembimbing</h3><p><a href="{{ $i->supervisor->profileUrl() }}" class="fx-link-plain">{{ $i->supervisor->name }}</a></p>@endif
     </div>
     <form method="post" action="/karya/{{ $i->slug }}/kolaborasi" class="fx-panel top fx-form">
         @csrf <h2>Tertarik berkolaborasi?</h2>

@@ -151,7 +151,24 @@
 .fx-form select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(2,102,175,.15)}
 .fx-hint{margin:-4px 0 0;font-size:12px;color:var(--mute)}
 @media (max-width:560px){.fx-grid2{grid-template-columns:1fr}}
+/* Profil dosen */
+.fx-teamline{display:block;font-size:12.5px;font-weight:500;color:var(--blue);margin:-2px 0 6px}
+.fx-lect-grid{position:relative;z-index:5;margin-top:-56px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;padding-bottom:72px}
+.fx .fx-lect{display:flex;gap:16px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-top:4px solid var(--orange);border-radius:14px;padding:20px;box-shadow:0 14px 34px -24px rgba(2,58,130,.35);transition:transform .2s,box-shadow .2s}
+.fx .fx-lect:hover{transform:translateY(-4px);box-shadow:0 22px 38px -20px rgba(2,58,130,.45)}
+.fx-avatar{flex:none;display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--blue2),var(--blue));color:#fff;font-weight:700;font-size:19px;box-shadow:0 0 0 4px #EAF2FB}
+.fx-avatar.lg{width:88px;height:88px;font-size:30px;box-shadow:0 0 0 5px rgba(255,255,255,.25);background:var(--orange)}
+.fx-lect-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fx-lect-body strong{font-size:17px;font-weight:700;color:var(--ink)}
+.fx-lect-body small{font-size:13px;color:var(--mute)}
+.fx-lect-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fx-lect-tags em{font-style:normal;font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;background:#EAF2FB;color:var(--blue)}
+.fx-lect-stats{margin-top:8px;font-size:13px;color:var(--ink2)}
+.fx-lect-stats b{color:var(--orange);font-size:15px}
+.fx-profile{display:flex;align-items:center;gap:22px;margin-top:14px}
+.fx-profile h1{margin:0 0 10px!important}
 @media (max-width:860px){.fx-detail{grid-template-columns:1fr}}
+@media (max-width:560px){.fx-profile{flex-direction:column;align-items:flex-start}.fx-lect-grid{grid-template-columns:1fr}}
 
 @media (max-width:860px){.fx-hero .fx-wrap{grid-template-columns:1fr}.fx-hero .d1,.fx-hero .d2{display:none}}
 @media (max-width:640px){.fx-nav .fx-hide,.fx-top .fx-hide{display:none}.fx-search select{flex:1 1 45%}.fx-search button{flex:1 1 100%}.fx-brand small{display:none}}

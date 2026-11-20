@@ -35,6 +35,7 @@
         </a>
         <nav class="fx-nav">
             <a href="/" class="fx-hide {{ request()->is('/') ? 'on' : '' }}">Beranda</a>
+            <a href="/pembimbing" class="{{ request()->is('pembimbing*') ? 'on' : '' }}">Dosen</a>
             @auth <a href="{{ auth()->user()->homeUrl() }}" class="fx-btn">Dasbor</a>
             @else @unless(request()->routeIs('login'))<a href="{{ route('login') }}" class="fx-btn">Masuk</a>@endunless @endauth
         </nav>

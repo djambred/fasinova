@@ -54,6 +54,24 @@ class PublicSiteTest extends TestCase
         $this->get('/?q=tidakada')->assertOk()->assertDontSee('Deteksi Hoaks')->assertSee('Belum ada karya yang cocok');
     }
 
+    public function test_lecturer_profiles_list_supervised_published_karya_only(): void
+    {
+        $i = $this->make('published');
+        $sup = User::create(['name' => 'Jefry Pembimbing', 'email' => 'j@x.test', 'password' => 'pw', 'role' => 'dosen']);
+        $i->update(['supervisor_id' => $sup->id]);
+        $draft = \App\Models\Innovation::create(['title' => 'Karya Rahasia', 'track_id' => $i->track_id, 'owner_id' => $i->owner_id, 'supervisor_id' => $sup->id, 'status' => 'draft']);
+        $student = $i->owner;
+
+        $this->get('/pembimbing')->assertOk()->assertSee('Jefry Pembimbing')->assertSee($sup->profileUrl())
+            ->assertSeeInOrder(['Jefry Pembimbing', '1', 'karya terbit'])->assertDontSee('j@x.test');   // email tidak dipublikasikan
+        $this->get($sup->profileUrl())->assertOk()->assertSee('Deteksi Hoaks')->assertSee('Tim: '.$student->name)
+            ->assertDontSee('Karya Rahasia')->assertDontSee('j@x.test');                                   // hanya karya terbit
+        $this->get('/pembimbing/'.$sup->id)->assertRedirect($sup->profileUrl());                           // URL kanonik
+        $this->get('/pembimbing/'.$student->id.'-x')->assertNotFound();                                    // mahasiswa bukan dosen
+        $this->get('/karya/deteksi-hoaks')->assertSee($sup->profileUrl());                                 // nama pembimbing tertaut
+        $this->get('/')->assertSee('href="/pembimbing"', false);
+    }
+
     public function test_inquiry_rate_limited_after_3(): void
     {
         $this->make('published');
