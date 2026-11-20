@@ -1,0 +1,64 @@
+/* FASINOVA Admin — tema UEU untuk Filament v4.
+   Dimuat di ketiga panel lewat App\Providers\Filament\UeuTheme; warna & font diatur di sana, file ini hanya polesan. */
+:root{--ueu-blue:#0266AF;--ueu-blue2:#023AE2;--ueu-navy:#06306B;--ueu-orange:#F37021;--ueu-line:#E3E8F0}
+
+/* Latar & tipografi */
+.fi-body{background:#F5F7FB}
+.fi-header-heading{font-weight:700;letter-spacing:-.01em}
+
+/* Topbar biru UEU */
+.fi-topbar{background:linear-gradient(90deg,var(--ueu-blue2),var(--ueu-blue))!important;border-bottom:3px solid var(--ueu-orange)!important;box-shadow:none!important}
+.fi-topbar,.fi-topbar .fi-logo,.fi-topbar .fi-icon-btn{color:#fff!important}
+.fi-topbar .fi-btn.fi-outlined{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.35)}
+.fi-topbar .fi-logo{font-weight:700;letter-spacing:.02em}
+
+/* Sidebar */
+.fi-sidebar{background:#fff;border-right:1px solid var(--ueu-line)}
+.fi-sidebar-group-label{font-size:11px!important;font-weight:700!important;text-transform:uppercase;letter-spacing:.08em;color:#8a94a6!important}
+.fi-sidebar-item-btn{border-radius:10px!important;transition:background .15s}
+.fi-sidebar-item-btn:hover{background:#EEF4FB!important}
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn{background:var(--ueu-blue)!important;box-shadow:inset 4px 0 0 var(--ueu-orange)}
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn *{color:#fff!important}
+
+/* Kartu statistik: lebih tegas, ikon dalam lingkaran, garis warna di atas */
+.fi-wi-stats-overview-stat{position:relative;overflow:hidden;border-radius:14px!important;border:1px solid var(--ueu-line)!important;box-shadow:0 6px 18px -14px rgba(2,58,130,.5)!important;transition:transform .2s,box-shadow .2s;border-top:4px solid var(--ueu-blue)!important}
+a.fi-wi-stats-overview-stat:hover,.fi-wi-stats-overview-stat:hover{transform:translateY(-3px);box-shadow:0 16px 30px -18px rgba(2,58,130,.55)!important}
+.fi-wi-stats-overview-stat-label-ctn .fi-icon{width:34px!important;height:34px!important;padding:7px;border-radius:10px;background:#EAF2FB;color:var(--ueu-blue)!important}
+.fi-wi-stats-overview-stat-label{font-weight:600!important;color:#4A4E57!important}
+.fi-wi-stats-overview-stat-value{font-size:2.25rem!important;font-weight:700!important;color:#212934}
+.fi-wi-stats-overview-stat-description{font-weight:500}
+/* Warna per kartu mengikuti ->color() di widget */
+.fi-wi-stats-overview-stat.fi-color-warning{border-top-color:var(--ueu-orange)!important}
+.fi-wi-stats-overview-stat.fi-color-success{border-top-color:#10b981!important}
+.fi-wi-stats-overview-stat.fi-color-danger{border-top-color:#e11d48!important}
+.fi-wi-stats-overview-stat.fi-color-gray{border-top-color:#94a3b8!important}
+
+/* Section & tabel */
+.fi-section-header-heading{font-weight:700!important;padding-left:12px;border-left:4px solid var(--ueu-orange)}
+.fi-ta-ctn,.fi-section:not(.fi-section-not-contained){border-radius:14px!important}
+.fi-ta-header-cell{background:#F1F5FA!important}
+
+/* Widget panduan (lihat resources/views/filament/widgets/panduan-alur.blade.php) */
+.fx-welcome{position:relative;overflow:hidden;border-radius:16px;padding:22px 26px;color:#fff;background:linear-gradient(120deg,var(--ueu-blue2),var(--ueu-blue) 60%,var(--ueu-navy))}
+.fx-welcome:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;background:var(--ueu-orange);right:-40px;bottom:-60px;opacity:.9}
+.fx-welcome h2{font-size:22px;font-weight:700;margin:0 0 4px}
+.fx-welcome p{margin:0;opacity:.9;font-size:14px;max-width:640px}
+.fx-todo{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 14px;border-radius:8px;background:#fff;color:var(--ueu-navy);font-weight:600;font-size:13px;position:relative;z-index:1}
+.fx-todo b{background:var(--ueu-orange);color:#fff;border-radius:999px;padding:1px 9px}
+.fx-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:16px;background:#fff;border:1px solid var(--ueu-line);border-radius:14px;overflow:hidden}
+.fx-step{position:relative;padding:16px 18px;display:block;text-decoration:none;color:#212934;transition:background .15s}
+.fx-step:hover{background:#F5F9FE}
+.fx-step+.fx-step{border-left:1px solid var(--ueu-line)}
+.fx-step+.fx-step:before{content:"›";position:absolute;left:-9px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid var(--ueu-line);display:grid;place-items:center;font-size:13px;color:#8a94a6;z-index:1;line-height:16px;text-align:center}
+.fx-step small{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a94a6}
+.fx-step small i{width:20px;height:20px;border-radius:50%;background:#EAF2FB;color:var(--ueu-blue);font-style:normal;display:grid;place-items:center;font-size:11px}
+.fx-step strong{display:block;font-size:26px;font-weight:700;margin:6px 0 2px}
+.fx-step span{font-size:12.5px;color:#6C6C6C;line-height:1.45;display:block}
+.fx-step.hot{background:#FFF6F0}.fx-step.hot small i{background:var(--ueu-orange);color:#fff}
+@media (max-width:900px){.fx-flow{grid-template-columns:1fr 1fr}.fx-step+.fx-step:before{display:none}}
+
+/* Mode gelap tetap terbaca */
+.dark .fi-body{background:#0b1220}
+.dark .fi-sidebar,.dark .fx-flow{background:#111827;border-color:#1f2937}
+.dark .fx-step{color:#e5e7eb}.dark .fx-step:hover{background:#1a2336}
+.dark .fi-wi-stats-overview-stat-value{color:#fff}

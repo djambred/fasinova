@@ -9,7 +9,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
-use Filament\Support\Colors\Color;
 use Filament\PanelProvider;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -22,7 +21,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()
+        return UeuTheme::apply($panel)->id('admin')->path('admin')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()
             ->userMenuItems([
                 \Filament\Navigation\MenuItem::make('dosen')->label('Dasbor Dosen')->url('/dosen')->icon('heroicon-o-academic-cap')
                     ->visible(fn () => in_array(auth()->user()?->role, ['dosen', 'pic', 'admin'])),
@@ -30,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
                     ->visible(fn () => auth()->user()?->isAdmin()),
             ])->databaseNotifications()->databaseNotificationsPolling('30s')
             ->favicon(asset('icon.svg'))->brandName('FASINOVA · PIC & Admin')
-            ->colors(['primary' => Color::hex('#1AA5BA')])->sidebarCollapsibleOnDesktop()
+            ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make('Pemeriksaan'), NavigationGroup::make('Deploy'),
                 NavigationGroup::make('Master data'), NavigationGroup::make('Sistem')->collapsed(),

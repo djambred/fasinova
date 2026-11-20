@@ -105,6 +105,26 @@ class ActionSmokeTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $opened);
     }
 
+    /** Dasbor tiap panel: halaman terbuka, tema UEU termuat, widget alur menampilkan angka sesuai cakupan peran. */
+    public function test_every_dashboard_renders_theme_and_flow_widget(): void
+    {
+        foreach (['admin' => 'admin', 'pic' => 'admin', 'dosen' => 'dosen', 'mahasiswa' => 'app'] as $role => $panel) {
+            Filament::setCurrentPanel($panel);
+            $this->actingAs($this->users[$role]);
+            $this->flushSession();   // ganti pengguna = sesi baru (AuthenticateSession menolak sesi milik pengguna lain)
+            $this->get("/$panel")->assertOk()->assertSee('css/fasinova-admin.css');
+            Livewire::test(\App\Filament\Widgets\PanduanAlur::class)->assertOk()->assertSee('fx-welcome')->assertSee($this->users[$role]->name);
+        }
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($this->users['pic']);
+        Livewire::test(\App\Filament\Widgets\PanduanAlur::class)->assertSeeInOrder(['Menunggu diperiksa', '1', 'Perlu perbaikan', '1', 'Disetujui', '0', 'Terbit', '1', 'Demo live', '1']);
+        Livewire::test(\App\Filament\Admin\Widgets\OverviewStats::class)->assertOk()->assertSee('lewat tenggat');
+        Filament::setCurrentPanel('app');
+        $this->actingAs($this->users['mahasiswa']);
+        Livewire::test(\App\Filament\Widgets\PanduanAlur::class)->assertSeeInOrder(['Draf', '1', 'Menunggu PIC', '1', 'Perlu perbaikan', '1', 'Terbit', '1', 'Demo live', '1'])
+            ->assertSee('Perlu tindakan Anda');   // draf + revisi menunggu mahasiswa sendiri
+    }
+
     /** Wizard mahasiswa: setiap tombol header di halaman ubah, untuk tiap status karya. */
     public function test_every_wizard_header_action_opens_for_every_status(): void
     {

@@ -9,7 +9,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
-use Filament\Support\Colors\Color;
 use Filament\PanelProvider;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -22,9 +21,9 @@ class DosenPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->id('dosen')->path('dosen')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
+        return UeuTheme::apply($panel)->id('dosen')->path('dosen')->login(\App\Filament\Pages\PanelLoginRedirect::class)->profile()->databaseNotifications()->databaseNotificationsPolling('30s')
             ->favicon(asset('icon.svg'))->brandName('FASINOVA · Dosen')
-            ->colors(['primary' => Color::hex('#1AA5BA')])->sidebarCollapsibleOnDesktop()
+            ->sidebarCollapsibleOnDesktop()
             ->userMenuItems([\Filament\Navigation\MenuItem::make()->label('Panel PIC (pemeriksaan)')->url('/admin')->icon('heroicon-o-clipboard-document-check')])
             ->pages([Dashboard::class])
             ->widgets([\App\Filament\Dosen\Widgets\DosenStats::class])
