@@ -24,6 +24,7 @@
         <label class="fx-check"><input type="checkbox" name="remember" value="1"> Ingat saya</label>
         <button>Masuk</button>
     </form>
+    <p class="fx-back">Mahasiswa belum punya akun? <a href="{{ route('register') }}" class="fx-link-plain">Daftar di sini</a></p>
     <a href="/" class="fx-back">← Kembali ke etalase</a>
 </div>
 @endsection

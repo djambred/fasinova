@@ -141,6 +141,16 @@
 .fx-auth .fx-panel{padding:28px}
 .fx-auth .fx-back{display:block;text-align:center;margin-top:16px;font-size:13px;color:var(--mute)}
 .fx-auth .fx-back:hover{color:var(--blue)}
+.fx-auth p.fx-back{margin:16px 0 0}
+.fx-auth p.fx-back+.fx-back{margin-top:8px}
+.fx-auth.wide{max-width:620px}
+.fx a.fx-link-plain{color:var(--blue);font-weight:600}
+.fx a.fx-link-plain:hover{color:var(--orange)}
+.fx-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.fx-form select{font:inherit;font-size:14px;width:100%;margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:11px 13px;color:var(--ink);background:#fff;outline:none;cursor:pointer}
+.fx-form select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(2,102,175,.15)}
+.fx-hint{margin:-4px 0 0;font-size:12px;color:var(--mute)}
+@media (max-width:560px){.fx-grid2{grid-template-columns:1fr}}
 @media (max-width:860px){.fx-detail{grid-template-columns:1fr}}
 
 @media (max-width:860px){.fx-hero .fx-wrap{grid-template-columns:1fr}.fx-hero .d1,.fx-hero .d2{display:none}}

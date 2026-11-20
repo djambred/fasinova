@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Innovation;
 use App\Models\Track;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 class PublicController extends Controller
 {
@@ -50,13 +49,7 @@ class PublicController extends Controller
         $d = $r->validate(['name' => 'required|max:100', 'email' => 'required|email', 'organization' => 'nullable|max:150',
             'message' => 'required|max:2000', 'pdp' => 'accepted']);
 
-        // shortcut: tanpa kunci Turnstile (dev) pemeriksaan dilewati; wajib diisi di produksi.
-        if ($secret = config('fasinova.turnstile_secret')) {
-            $ok = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-                'secret' => $secret, 'response' => $r->input('cf-turnstile-response'), 'remoteip' => $r->ip(),
-            ])->json('success');
-            abort_unless($ok, 422, 'Verifikasi Turnstile gagal.');
-        }
+        \App\Support\Turnstile::verify($r);
         $inq = $i->inquiries()->create(collect($d)->except('pdp')->all());
         \App\Support\Notify::users(\App\Support\Notify::admins(), 'Inquiry kolaborasi baru', "{$inq->name} — {$i->title}", '/admin/inquiries', 'info');
         // Tim karya & pembimbing ikut tahu (lihat & balas dari panel masing-masing); admin tetap mengelola statusnya.

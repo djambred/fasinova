@@ -12,6 +12,8 @@ return [
     'mem_limit_mb' => 512,
     'turnstile_site_key' => env('TURNSTILE_SITE_KEY'),
     'turnstile_secret' => env('TURNSTILE_SECRET'),
+    // Pendaftaran mandiri mahasiswa (/daftar): hanya email berdomain ini (pisahkan dengan koma). Kosongkan untuk menerima domain apa pun.
+    'student_email_domains' => array_values(array_filter(array_map('trim', explode(',', (string) env('STUDENT_EMAIL_DOMAINS', 'student.esaunggul.ac.id'))))),
     // Database karya: container di daemon rootless `runner`, jaringan `fz-db`. Container karya memakai nama container sebagai host.
     'karya_db' => [
         'network' => 'fz-db',
