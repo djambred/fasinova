@@ -35,7 +35,8 @@ class PublicSiteTest extends TestCase
         $i->deployment->update(['status' => 'live', 'url' => 'https://deteksi-hoaks.x']);
         $this->withoutVite()->get('/')->assertOk()->assertSee('img/logo-ueu.png')->assertSee('data-track="ai"', false)
             ->assertSee('Demo online')->assertSeeInOrder(['<strong>1</strong><span>Karya', '<strong>1</strong><span>Demo online'], false);
-        $this->get('/karya/deteksi-hoaks')->assertOk()->assertSee('fx-detail')->assertSee('img/logo-ueu.png')->assertSee('Coba demo');   // detail ikut tema UEU
+        $this->get('/karya/deteksi-hoaks')->assertOk()->assertSee('fx-detail')->assertSee('img/logo-ueu.png')->assertSee('Coba demo')
+            ->assertDontSee('Kartu hasil');   // detail ikut tema UEU; kartu hasil kosong tidak ditampilkan
         $this->get('/masuk')->assertOk()->assertSee('fx-auth')->assertSee('name="password"', false);
         $i->update(['status' => 'draft']);
         $this->get('/karya/deteksi-hoaks')->assertNotFound();

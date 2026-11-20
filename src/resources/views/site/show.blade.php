@@ -10,6 +10,8 @@
     // Link YouTube (watch / youtu.be / embed) -> URL embed; selain itu tampil sebagai tautan.
     $yt = null;
     if ($i->video_url && preg_match('~(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([\w-]{11})~', $i->video_url, $mm)) $yt = 'https://www.youtube-nocookie.com/embed/'.$mm[1];
+    $hasVideo = $yt || $video || $i->video_url;   // tanpa video, poster tampil di kolom utama saja (tidak dobel)
+    $card = collect($i->track->result_card_schema ?? [])->map(fn ($f) => ['label' => $f['label'], 'value' => $i->resultCard?->data[$f['key']] ?? null])->filter(fn ($f) => filled($f['value']));
 @endphp
 @section('hero')
 <section class="fx-hero sm">
@@ -42,19 +44,15 @@
         @if(! $i->abstract && ! $i->problem && ! $i->solution)<p>Deskripsi karya belum diisi.</p>@endif
     </div>
 
-    @if($i->resultCard)
+    @if($card->isNotEmpty())
     <div class="fx-panel"><h2>Kartu hasil</h2>
-        @foreach($i->track->result_card_schema ?? [] as $f)
-            @if($v = $i->resultCard->data[$f['key']] ?? null)
-                <h3>{{ $f['label'] }}</h3><p class="fx-pre">{{ $v }}</p>
-            @endif
-        @endforeach
+        @foreach($card as $f)<h3>{{ $f['label'] }}</h3><p class="fx-pre">{{ $f['value'] }}</p>@endforeach
     </div>@endif
   </div>
 
   <aside class="fx-col">
     @if($demo)<a href="{{ $demo }}" rel="noopener" target="_blank" class="fx-demo"><b></b>Coba demo</a>@endif
-    @if($poster)<a href="{{ $poster }}" target="_blank" rel="noopener" class="fx-poster"><img src="{{ $poster }}" alt="Poster"></a>@endif
+    @if($poster && $hasVideo)<a href="{{ $poster }}" target="_blank" rel="noopener" class="fx-poster"><img src="{{ $poster }}" alt="Poster"></a>@endif
     @if($i->journal_url || $i->hki)
     <div class="fx-panel">
         @if($i->journal_url)<h2>Publikasi jurnal</h2><p><a class="fx-link" href="{{ $i->journal_url }}" target="_blank" rel="noopener noreferrer">{{ $i->journal_url }}</a></p>@endif
