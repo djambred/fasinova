@@ -160,8 +160,10 @@ class ActionSmokeTest extends TestCase
             Livewire::test(Resources\InnovationResource\Pages\ListInnovations::class)->searchTable($q)
                 ->assertCanSeeTableRecords($mine)->assertCanNotSeeTableRecords([$other]);
         }
-        Livewire::test(Resources\DeploymentResource\Pages\ListDeployments::class)->searchTable('Terbit')
-            ->assertCanSeeTableRecords([Innovation::where('title', 'Terbit')->first()->deployment]);
+        foreach (['Terbit', 'Mhs', $sup] as $q) {   // judul, ketua, pembimbing
+            Livewire::test(Resources\DeploymentResource\Pages\ListDeployments::class)->searchTable($q)
+                ->assertCanSeeTableRecords([Innovation::where('title', 'Terbit')->first()->deployment]);
+        }
 
         Filament::setCurrentPanel('dosen');
         $this->actingAs($this->users['dosen']);

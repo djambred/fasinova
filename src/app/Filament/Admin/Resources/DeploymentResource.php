@@ -46,7 +46,10 @@ class DeploymentResource extends Resource
             ->modifyQueryUsing(fn (Builder $query) => $query->where('status', '!=', 'not_deployed'))
             ->columns([
                 TextColumn::make('subdomain')->searchable(),
-                TextColumn::make('innovation.title')->label('Karya')->limit(40)->searchable(),
+                TextColumn::make('innovation.title')->label('Karya')->limit(40)->searchable()
+                    ->description(fn (Deployment $record) => $record->innovation?->owner?->name),
+                TextColumn::make('innovation.owner.name')->label('Ketua')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('innovation.supervisor.name')->label('Pembimbing')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')->badge()->color(fn ($state) => match ($state) {
                     'live' => 'success', 'failed' => 'danger', 'stopped' => 'gray', default => 'warning',
                 })->description(fn (Deployment $record) => $record->needs_redeploy ? 'perlu redeploy' : null),

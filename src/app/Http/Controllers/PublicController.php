@@ -13,13 +13,16 @@ class PublicController extends Controller
     {
         $items = Innovation::with('track', 'deployment')->where('status', 'published')
             // Sesuai placeholder "karya, teknologi, atau tim": judul/isi, ketua (nama/NIM), anggota, pembimbing, peminatan, stack.
-            ->when(trim((string) $r->q), fn ($q, $v) => $q->where(fn ($w) => $w
-                ->whereLike('title', "%$v%")->orWhereLike('problem', "%$v%")->orWhereLike('abstract', "%$v%")
-                ->orWhereRaw('lower(cast(members as text)) like ?', ['%'.mb_strtolower($v).'%'])   // jsonb: cast agar jalan di PostgreSQL & SQLite
-                ->orWhereHas('owner', fn ($u) => $u->whereLike('name', "%$v%")->orWhereLike('nim', "%$v%"))
-                ->orWhereHas('supervisor', fn ($u) => $u->whereLike('name', "%$v%"))
-                ->orWhereHas('track', fn ($t) => $t->whereLike('name', "%$v%"))
-                ->orWhereHas('deployment', fn ($d) => $d->whereLike('stack', "%$v%"))))
+            // % dan _ diketik pengguna dicari apa adanya, bukan wildcard (escape \ bawaan PostgreSQL).
+            ->when(trim((string) $r->q), fn ($q, $v) => $q->where(function ($w) use ($v) {
+                $like = '%'.addcslashes($v, '%_\\').'%';
+                $w->whereLike('title', $like)->orWhereLike('problem', $like)->orWhereLike('abstract', $like)
+                    ->orWhereRaw('lower(cast(members as text)) like ?', [mb_strtolower($like)])   // jsonb: cast agar jalan di PostgreSQL & SQLite
+                    ->orWhereHas('owner', fn ($u) => $u->whereLike('name', $like)->orWhereLike('nim', $like))
+                    ->orWhereHas('supervisor', fn ($u) => $u->whereLike('name', $like))
+                    ->orWhereHas('track', fn ($t) => $t->whereLike('name', $like))
+                    ->orWhereHas('deployment', fn ($d) => $d->whereLike('stack', $like));
+            }))
             ->when($r->track, fn ($q, $v) => $q->where('track_id', $v))
             ->when($r->prodi, fn ($q, $v) => $q->where('study_program', $v))
             ->when($r->tahun, fn ($q, $v) => $q->where('academic_period', $v))
