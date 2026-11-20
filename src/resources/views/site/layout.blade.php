@@ -15,20 +15,37 @@
     <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{{ $mTitle }}"><meta name="twitter:description" content="{{ $mDesc }}"><meta name="twitter:image" content="{{ $mImg }}">
     <link rel="icon" type="image/svg+xml" href="/icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
     @vite(['resources/css/app.css'])
-    @stack('head')
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ asset('css/fasinova.css') }}?v={{ filemtime(public_path('css/fasinova.css')) }}">
 </head>
-@hasSection('page')
-<body class="fx">@yield('page')</body></html>
-@else
-<body class="bg-slate-50 text-slate-800">
-<header class="bg-white border-b"><div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-    <a href="/" class="text-xl font-bold text-brand-700">FASINOVA</a>
-    <nav class="flex items-center gap-4 text-sm text-slate-500">
-        <span class="hidden sm:inline">Fasilkom Innovation Showcase</span>
-        @auth <a href="{{ auth()->user()->homeUrl() }}" class="text-brand-700 font-medium">Dasbor</a>
-        @else <a href="{{ route('login') }}" class="bg-brand-600 text-white rounded px-3 py-1.5">Masuk</a> @endauth
-    </nav></div></header>
-<main class="max-w-6xl mx-auto px-4 py-8">@yield('content')</main>
-<footer class="text-center text-xs text-slate-400 py-8">© Fakultas Ilmu Komputer</footer>
+<body class="fx">
+<div class="fx-top">
+    <div class="fx-wrap">
+        <span>Fakultas Ilmu Komputer · Universitas Esa Unggul</span>
+        <span class="fx-hide"><a href="https://fasilkom.esaunggul.ac.id" target="_blank" rel="noopener">fasilkom.esaunggul.ac.id</a></span>
+    </div>
+</div>
+<header class="fx-head">
+    <div class="fx-wrap">
+        <a href="/" class="fx-brand">
+            <img src="{{ asset('img/logo-ueu.png') }}" alt="Universitas Esa Unggul" width="135" height="44">
+            <span class="fx-sep"></span>
+            <span><strong>FASI<span>NOVA</span></strong><small>Fasilkom Innovation Showcase</small></span>
+        </a>
+        <nav class="fx-nav">
+            <a href="/" class="fx-hide {{ request()->is('/') ? 'on' : '' }}">Beranda</a>
+            @auth <a href="{{ auth()->user()->homeUrl() }}" class="fx-btn">Dasbor</a>
+            @else @unless(request()->routeIs('login'))<a href="{{ route('login') }}" class="fx-btn">Masuk</a>@endunless @endauth
+        </nav>
+    </div>
+</header>
+@yield('hero')
+<main class="fx-wrap">@yield('content')</main>
+<footer class="fx-foot">
+    <div class="fx-wrap">
+        <span><strong>FASINOVA</strong> · Fasilkom Innovation Showcase</span>
+        <span>© {{ date('Y') }} Fakultas Ilmu Komputer, Universitas Esa Unggul</span>
+    </div>
+</footer>
 </body></html>
-@endif

@@ -1,32 +1,5 @@
 @extends('site.layout')
-@push('head')
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="{{ asset('css/fasinova.css') }}?v={{ filemtime(public_path('css/fasinova.css')) }}">
-@endpush
-@section('page')
-<div class="fx-top">
-    <div class="fx-wrap">
-        <span>Fakultas Ilmu Komputer · Universitas Esa Unggul</span>
-        <span class="fx-hide"><a href="https://fasilkom.esaunggul.ac.id" target="_blank" rel="noopener">fasilkom.esaunggul.ac.id</a></span>
-    </div>
-</div>
-
-<header class="fx-head">
-    <div class="fx-wrap">
-        <a href="/" class="fx-brand">
-            <img src="{{ asset('img/logo-ueu.png') }}" alt="Universitas Esa Unggul" width="135" height="44">
-            <span class="fx-sep"></span>
-            <span><strong>FASI<span>NOVA</span></strong><small>Fasilkom Innovation Showcase</small></span>
-        </a>
-        <nav class="fx-nav">
-            <a href="/" class="on fx-hide">Beranda</a>
-            @auth <a href="{{ auth()->user()->homeUrl() }}" class="fx-btn">Dasbor</a>
-            @else <a href="{{ route('login') }}" class="fx-btn">Masuk</a> @endauth
-        </nav>
-    </div>
-</header>
-
+@section('hero')
 <section class="fx-hero">
     <span class="fx-dot d1"></span><span class="fx-dot d2"></span><span class="fx-dot d3"></span><span class="fx-dot d4"></span>
     <div class="fx-wrap">
@@ -42,8 +15,9 @@
         </div>
     </div>
 </section>
+@endsection
 
-<main class="fx-wrap">
+@section('content')
     <form class="fx-search" method="get">
         <input name="q" value="{{ request('q') }}" placeholder="Cari karya, teknologi, atau tim…" aria-label="Cari karya">
         <select name="track" aria-label="Peminatan">
@@ -100,12 +74,4 @@
     </div>
 
     @if($items->hasPages())<div style="padding-bottom:60px">{{ $items->links() }}</div>@endif
-</main>
-
-<footer class="fx-foot">
-    <div class="fx-wrap">
-        <span><strong>FASINOVA</strong> · Fasilkom Innovation Showcase</span>
-        <span>© {{ date('Y') }} Fakultas Ilmu Komputer, Universitas Esa Unggul</span>
-    </div>
-</footer>
 @endsection

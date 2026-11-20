@@ -2,7 +2,6 @@
 @section('title', $i->title.' — FASINOVA')
 @section('description', \Illuminate\Support\Str::limit(strip_tags($i->abstract ?: $i->problem), 160))
 @section('image', ! empty(($i->materials ?? [])['poster']) ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($i->materials['poster'])) : url('/og-image.png'))
-@section('content')
 @php
     $m = $i->materials ?? [];
     $video = ! empty($m['video']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($m['video']) : null;
@@ -12,50 +11,74 @@
     $yt = null;
     if ($i->video_url && preg_match('~(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([\w-]{11})~', $i->video_url, $mm)) $yt = 'https://www.youtube-nocookie.com/embed/'.$mm[1];
 @endphp
-<a href="/" class="text-sm text-brand-600">← Semua karya</a>
-<h1 class="text-3xl font-bold mt-2">{{ $i->title }}</h1>
-<p class="text-sm text-slate-500">{{ $i->track->name }}@if($i->formTypeLabel()) · {{ $i->formTypeLabel() }}@endif · {{ $i->academic_period }}</p>
-<div class="grid md:grid-cols-3 gap-8 mt-6">
-  <div class="md:col-span-2 space-y-6">
-    @if($yt)<iframe class="w-full aspect-video rounded-lg" src="{{ $yt }}" title="Video demo" allowfullscreen loading="lazy"></iframe>
-    @elseif($video)<video controls class="w-full rounded-lg bg-black" src="{{ $video }}"></video>
-    @elseif($i->video_url)<a class="text-brand-600 underline" href="{{ $i->video_url }}">Tonton video</a>
-    @elseif($poster)<img src="{{ $poster }}" alt="Poster {{ $i->title }}" class="w-full rounded-lg border">@endif
-    @if($i->abstract)<section><h2 class="font-semibold">Abstrak</h2><p class="whitespace-pre-line">{{ $i->abstract }}</p></section>@endif
-    <section><h2 class="font-semibold">Masalah</h2><p>{{ $i->problem }}</p></section>
-    <section><h2 class="font-semibold">Solusi</h2><p>{{ $i->solution }}</p></section>
+@section('hero')
+<section class="fx-hero sm">
+    <span class="fx-dot d3"></span><span class="fx-dot d4"></span>
+    <div class="fx-wrap">
+        <a href="/" class="fx-crumb">← Semua karya</a>
+        <h1>{{ $i->title }}</h1>
+        <div class="fx-meta">
+            <span>{{ $i->track->name }}</span>
+            @if($i->formTypeLabel())<span>{{ $i->formTypeLabel() }}</span>@endif
+            @if($i->academic_period)<span>{{ $i->academic_period }}</span>@endif
+            @if($demo)<span class="hl">Demo online</span>@endif
+        </div>
+    </div>
+</section>
+@endsection
+
+@section('content')
+<div class="fx-detail">
+  <div class="fx-col">
+    @if($yt)<div class="fx-panel fx-media"><iframe src="{{ $yt }}" title="Video demo" allowfullscreen loading="lazy"></iframe></div>
+    @elseif($video)<div class="fx-panel fx-media"><video controls src="{{ $video }}"></video></div>
+    @elseif($i->video_url)<div class="fx-panel"><a class="fx-link" href="{{ $i->video_url }}">Tonton video</a></div>
+    @elseif($poster)<div class="fx-panel fx-media"><img src="{{ $poster }}" alt="Poster {{ $i->title }}"></div>@endif
+
+    <div class="fx-panel top">
+        @if($i->abstract)<h2>Abstrak</h2><p class="fx-pre">{{ $i->abstract }}</p>@endif
+        @if($i->problem)<h2 @if($i->abstract) style="margin-top:22px" @endif>Masalah</h2><p>{{ $i->problem }}</p>@endif
+        @if($i->solution)<h2 style="margin-top:22px">Solusi</h2><p>{{ $i->solution }}</p>@endif
+        @if(! $i->abstract && ! $i->problem && ! $i->solution)<p>Deskripsi karya belum diisi.</p>@endif
+    </div>
+
     @if($i->resultCard)
-    <section class="bg-white border rounded-lg p-5"><h2 class="font-semibold mb-2">Kartu hasil</h2>
+    <div class="fx-panel"><h2>Kartu hasil</h2>
         @foreach($i->track->result_card_schema ?? [] as $f)
             @if($v = $i->resultCard->data[$f['key']] ?? null)
-                <h3 class="text-xs uppercase text-slate-500 mt-3">{{ $f['label'] }}</h3><p class="whitespace-pre-line">{{ $v }}</p>
+                <h3>{{ $f['label'] }}</h3><p class="fx-pre">{{ $v }}</p>
             @endif
         @endforeach
-    </section>@endif
+    </div>@endif
   </div>
-  <aside class="space-y-6">
-    @if($demo)<a href="{{ $demo }}" rel="noopener" target="_blank" class="block text-center bg-green-600 text-white rounded-lg py-3 font-semibold">Coba demo</a>@endif
-    @if($poster)<a href="{{ $poster }}" target="_blank" rel="noopener"><img src="{{ $poster }}" alt="Poster" class="w-full rounded-lg border"></a>@endif
-    @if($i->journal_url)<p class="text-sm bg-white border rounded-lg p-3"><span class="font-semibold">Publikasi jurnal:</span> <a class="text-brand-700 underline break-all" href="{{ $i->journal_url }}" target="_blank" rel="noopener noreferrer">{{ $i->journal_url }}</a></p>@endif
-    @if($i->hki)<p class="text-sm bg-white border rounded-lg p-3"><span class="font-semibold">HKI:</span> {{ $i->hki }}</p>@endif
-    <div class="bg-white border rounded-lg p-4 text-sm"><h2 class="font-semibold">Tim</h2>
-        <p>{{ $i->owner->name }} (ketua)</p>
+
+  <aside class="fx-col">
+    @if($demo)<a href="{{ $demo }}" rel="noopener" target="_blank" class="fx-demo"><b></b>Coba demo</a>@endif
+    @if($poster)<a href="{{ $poster }}" target="_blank" rel="noopener" class="fx-poster"><img src="{{ $poster }}" alt="Poster"></a>@endif
+    @if($i->journal_url || $i->hki)
+    <div class="fx-panel">
+        @if($i->journal_url)<h2>Publikasi jurnal</h2><p><a class="fx-link" href="{{ $i->journal_url }}" target="_blank" rel="noopener noreferrer">{{ $i->journal_url }}</a></p>@endif
+        @if($i->hki)<h2 @if($i->journal_url) style="margin-top:18px" @endif>HKI</h2><p>{{ $i->hki }}</p>@endif
+    </div>@endif
+    <div class="fx-panel fx-team"><h2>Tim</h2>
+        <p>{{ $i->owner->name }} <small>Ketua</small></p>
         @foreach($i->members ?? [] as $mem)<p>{{ $mem['name'] }}</p>@endforeach
-        <p class="mt-2 text-slate-500">Pembimbing: {{ $i->supervisor?->name }}</p></div>
-    <form method="post" action="/karya/{{ $i->slug }}/kolaborasi" class="bg-white border rounded-lg p-4 space-y-2 text-sm">
-        @csrf <h2 class="font-semibold">Tertarik berkolaborasi?</h2>
-        @if(session('ok'))<p class="text-green-700">{{ session('ok') }}</p>@endif
-        @foreach($errors->all() as $e)<p class="text-red-600">{{ $e }}</p>@endforeach
-        <input name="name" placeholder="Nama" value="{{ old('name') }}" class="border rounded w-full px-2 py-1" required>
-        <input name="email" type="email" placeholder="Email" value="{{ old('email') }}" class="border rounded w-full px-2 py-1" required>
-        <input name="organization" placeholder="Organisasi" value="{{ old('organization') }}" class="border rounded w-full px-2 py-1">
-        <textarea name="message" placeholder="Pesan" class="border rounded w-full px-2 py-1" required>{{ old('message') }}</textarea>
-        <label class="flex gap-2"><input type="checkbox" name="pdp" value="1" required> Saya setuju data saya diproses sesuai UU PDP No. 27/2022 untuk menindaklanjuti pesan ini.</label>
+        @if($i->supervisor)<h3>Pembimbing</h3><p>{{ $i->supervisor->name }}</p>@endif
+    </div>
+    <form method="post" action="/karya/{{ $i->slug }}/kolaborasi" class="fx-panel top fx-form">
+        @csrf <h2>Tertarik berkolaborasi?</h2>
+        @if(session('ok'))<p class="fx-ok">{{ session('ok') }}</p>@endif
+        @foreach($errors->all() as $e)<p class="fx-err">{{ $e }}</p>@endforeach
+        <input name="name" placeholder="Nama" value="{{ old('name') }}" aria-label="Nama" required>
+        <input name="email" type="email" placeholder="Email" value="{{ old('email') }}" aria-label="Email" required>
+        <input name="organization" placeholder="Organisasi (opsional)" value="{{ old('organization') }}" aria-label="Organisasi">
+        <textarea name="message" placeholder="Pesan" aria-label="Pesan" required>{{ old('message') }}</textarea>
+        <label class="fx-check"><input type="checkbox" name="pdp" value="1" required> Saya setuju data saya diproses sesuai UU PDP No. 27/2022 untuk menindaklanjuti pesan ini.</label>
         @if(config('fasinova.turnstile_site_key'))
             <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
             <div class="cf-turnstile" data-sitekey="{{ config('fasinova.turnstile_site_key') }}"></div>
         @endif
-        <button class="bg-brand-600 text-white rounded px-4 py-2">Kirim</button>
+        <button>Kirim</button>
     </form>
   </aside>
 </div>

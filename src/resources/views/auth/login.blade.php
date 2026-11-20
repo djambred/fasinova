@@ -1,35 +1,29 @@
-<!doctype html>
-<html lang="id">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Masuk — FASINOVA</title>
-    <link rel="icon" type="image/svg+xml" href="/icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    @vite(['resources/css/app.css'])
-</head>
-<body class="min-h-screen bg-gradient-to-br from-brand-600 to-brand-700 flex items-center justify-center p-4">
-<main class="w-full max-w-sm">
-    <div class="text-center text-white mb-6">
-        <h1 class="text-3xl font-bold tracking-tight">FASINOVA</h1>
-        <p class="text-sm text-white/80">Fasilkom Innovation Showcase</p>
+@extends('site.layout')
+@section('title', 'Masuk — FASINOVA')
+@section('hero')
+<section class="fx-hero sm">
+    <span class="fx-dot d3"></span><span class="fx-dot d4"></span>
+    <div class="fx-wrap" style="text-align:center">
+        <span class="fx-kicker">Mahasiswa · Dosen · PIC</span>
+        <h1>Masuk ke FASINOVA</h1>
     </div>
-    <form method="post" action="{{ route('login') }}" class="bg-white rounded-xl shadow-xl p-6 space-y-4">
+</section>
+@endsection
+@section('content')
+<div class="fx-auth">
+    <form method="post" action="{{ route('login') }}" class="fx-panel top fx-form">
         @csrf
-        <h2 class="font-semibold text-slate-800">Masuk ke akun Anda</h2>
-        @error('email')<p class="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{{ $message }}</p>@enderror
-        <label class="block text-sm text-slate-700">Email
-            <input name="email" type="email" value="{{ old('email') }}" autocomplete="username" autofocus required
-                   class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <h2>Masuk ke akun Anda</h2>
+        @error('email')<p class="fx-err">{{ $message }}</p>@enderror
+        <label class="fx-field">Email
+            <input name="email" type="email" value="{{ old('email') }}" autocomplete="username" autofocus required>
         </label>
-        <label class="block text-sm text-slate-700">Kata sandi
-            <input name="password" type="password" autocomplete="current-password" required
-                   class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <label class="fx-field">Kata sandi
+            <input name="password" type="password" autocomplete="current-password" required>
         </label>
-        <div class="flex items-center justify-between text-sm">
-            <label class="flex items-center gap-2 text-slate-600"><input type="checkbox" name="remember" value="1"> Ingat saya</label>
-        </div>
-        <button class="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-lg py-2.5 font-medium">Masuk</button>
+        <label class="fx-check"><input type="checkbox" name="remember" value="1"> Ingat saya</label>
+        <button>Masuk</button>
     </form>
-    <p class="text-center mt-4"><a href="/" class="text-sm text-white/80 hover:text-white">← Kembali ke etalase</a></p>
-</main>
-</body>
-</html>
+    <a href="/" class="fx-back">← Kembali ke etalase</a>
+</div>
+@endsection
